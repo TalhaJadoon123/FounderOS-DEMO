@@ -21,34 +21,34 @@ const INBOX_ENV = {
 
 describe('mail-guard', () => {
   it('blocks the real customer address that received five agent emails', () => {
-    expect(blocked(checkOutboundMail({ from: 'alex@vantage.example.com', to: CUSTOMER }, {}))).toContain(CUSTOMER);
+    expect(blocked(checkOutboundMail({ from: 'talha@vantage.example.com', to: CUSTOMER }, {}))).toContain(CUSTOMER);
   });
 
   it('blocks every invented address from the incident', () => {
     for (const addr of INVENTED) {
-      expect(checkOutboundMail({ from: 'alex@vantage.example.com', to: addr }, {}).ok).toBe(false);
+      expect(checkOutboundMail({ from: 'talha@vantage.example.com', to: addr }, {}).ok).toBe(false);
     }
   });
 
   it('blocks an external address hidden in cc', () => {
     const r = checkOutboundMail(
-      { from: 'alex@vantage.example.com', to: 'alex@vantage.example.com', cc: 'alejandro@agency.example.com' },
+      { from: 'talha@vantage.example.com', to: 'talha@vantage.example.com', cc: 'alejandro@agency.example.com' },
       {},
     );
     expect(blocked(r)).toContain('alejandro@agency.example.com');
   });
 
   it('blocks sending as founder@founderos.example.com per the send-as rule', () => {
-    const r = checkOutboundMail({ from: 'founder@founderos.example.com', to: 'alex@vantage.example.com' }, {});
+    const r = checkOutboundMail({ from: 'founder@founderos.example.com', to: 'talha@vantage.example.com' }, {});
   });
 
   it('allows internal mail to the operator so alerting keeps working', () => {
-    const r = checkOutboundMail({ from: 'alex@vantage.example.com', to: 'founder@founderos.example.com' }, {});
+    const r = checkOutboundMail({ from: 'talha@vantage.example.com', to: 'founder@founderos.example.com' }, {});
     expect(r.ok).toBe(true);
   });
 
   it('allows external mail only with the explicit per-call override', () => {
-    const r = checkOutboundMail({ from: 'alex@vantage.example.com', to: CUSTOMER }, { MAIL_ALLOW_EXTERNAL: '1' });
+    const r = checkOutboundMail({ from: 'talha@vantage.example.com', to: CUSTOMER }, { MAIL_ALLOW_EXTERNAL: '1' });
     expect(r.ok).toBe(true);
   });
 
@@ -58,7 +58,7 @@ describe('mail-guard', () => {
   });
 
   it('refuses an empty recipient list', () => {
-    expect(checkOutboundMail({ from: 'alex@vantage.example.com', to: '' }, {}).ok).toBe(false);
+    expect(checkOutboundMail({ from: 'talha@vantage.example.com', to: '' }, {}).ok).toBe(false);
   });
 });
 

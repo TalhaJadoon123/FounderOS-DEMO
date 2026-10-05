@@ -15,7 +15,7 @@ describe('parseInboxConfigs', () => {
       INBOX_1_USER: 'admin@founderos.example.com',
       INBOX_1_PASS: 'app-pass-1',
       INBOX_2_HOST: 'imap.gmail.com',
-      INBOX_2_USER: 'alex@launchpadcohort.example.com',
+      INBOX_2_USER: 'talha@launchpadcohort.example.com',
       INBOX_2_PASS: 'app-pass-2',
       INBOX_2_NAME: 'LC Execs',
       INBOX_3_HOST: 'imap.fastmail.com',

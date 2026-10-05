@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -71,6 +71,15 @@ const ROUTES: RouteEntry[] = [
   { route: 'lead-magnets', load: () => import('@/app/api/lead-magnets/route'), url: 'http://localhost/api/lead-magnets' },
   { route: 'admin/keys', load: () => import('@/app/api/admin/keys/route'), url: 'http://localhost/api/admin/keys' },
   { route: 'life/map', load: () => import('@/app/api/life/map/route'), url: 'http://localhost/api/life/map' },
+  // Keyless public sources. fetch is stubbed for the whole suite, so these
+  // assert the route contract rather than live reachability.
+  { route: 'free-apis', load: () => import('@/app/api/free-apis/route'), url: 'http://localhost/api/free-apis' },
+  {
+    route: 'free-apis/[id]',
+    load: () => import('@/app/api/free-apis/[id]/route'),
+    url: 'http://localhost/api/free-apis/free-frankfurter',
+    params: { id: 'free-frankfurter' },
+  },
   { route: 'metrics', load: () => import('@/app/api/metrics/route'), url: 'http://localhost/api/metrics' },
   // No ?q= on purpose: the ambient brief must not touch the gbrain CLI at all.
   { route: 'memory', load: () => import('@/app/api/memory/route'), url: 'http://localhost/api/memory', headers: { Authorization: 'Bearer smoke-memory-token' } },
@@ -120,6 +129,28 @@ describe('platform smoke — every GET API route answers 200 with JSON', () => {
    * tests/oauth-routes.test.ts is what actually covers them.
    */
   const REDIRECT_ROUTES = ['oauth/[provider]/start', 'oauth/callback'];
+
+  /**
+   * The keyless public sources reach the network. This suite is a net, not a
+   * connectivity check, so it runs them against a stubbed fetch: the route
+   * contract is still asserted, and the suite stays deterministic offline.
+   */
+  beforeAll(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ base: 'USD', date: '2026-10-05', rates: { EUR: 0.9 } }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ),
+    );
+  });
+
+  afterAll(() => {
+    vi.unstubAllGlobals();
+  });
 
   test('the API smoke net covers every GET route under app/api (no route escapes)', () => {
     const discovered = discoverGetRoutes(path.join(process.cwd(), 'app', 'api'))

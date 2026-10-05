@@ -18,7 +18,7 @@ const post = (body: unknown) =>
 describe('POST /api/social/dm/reply', () => {
   test('400 on a missing text/subscriberId', async () => {
     const { POST } = await import('@/app/api/social/dm/reply/route');
-    expect((await POST(post({ subscriberId: 'ig-alex' }))).status).toBe(400);
+    expect((await POST(post({ subscriberId: 'ig-talha' }))).status).toBe(400);
   });
 
   test('honest 502 and stores nothing when ManyChat is not connected', async () => {
@@ -26,7 +26,7 @@ describe('POST /api/social/dm/reply', () => {
     const { getDb } = await import('@/lib/data');
     const before = getDb().social.dmMessages('instagram').filter((m) => m.direction === 'out').length;
 
-    const res = await POST(post({ subscriberId: 'ig-alex', text: 'on it' }));
+    const res = await POST(post({ subscriberId: 'ig-talha', text: 'on it' }));
     expect(res.status).toBe(502);
     expect((await res.json()).ok).toBe(false);
 
@@ -41,7 +41,7 @@ describe('POST /api/social/dm/reply', () => {
     const { POST } = await import('@/app/api/social/dm/reply/route');
     const { getDb } = await import('@/lib/data');
 
-    const res = await POST(post({ subscriberId: 'ig-alex', text: 'here is pricing' }));
+    const res = await POST(post({ subscriberId: 'ig-talha', text: 'here is pricing' }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ok).toBe(true);
@@ -50,6 +50,6 @@ describe('POST /api/social/dm/reply', () => {
     const stored = getDb().social.dmMessages('instagram').find((m) => m.id === body.message.id);
     expect(stored?.text).toBe('here is pricing');
     expect(stored?.source).toBe('manychat');
-    expect(stored?.name).toBe('Alex'); // resolved from the existing thread
+    expect(stored?.name).toBe('Talha'); // resolved from the existing thread
   });
 });

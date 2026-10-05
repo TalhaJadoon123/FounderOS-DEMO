@@ -57,7 +57,9 @@ describe('readPluginSkills', () => {
     expect(alpha!.name).toBe('alpha');
     expect(alpha!.description).toBe('First plugin skill.');
     expect(alpha!.group).toBe('Plugin · myplugin');
-    expect(alpha!.path.endsWith('skills/alpha/SKILL.md')).toBe(true);
+    // Path separator is platform-native; compare on the segments, not the raw
+    // string, so this holds on Windows as well as POSIX.
+    expect(alpha!.path.split(/[\\/]/).slice(-3).join('/')).toBe('skills/alpha/SKILL.md');
   });
 
   it('lists each skill once even when the manifest has duplicate entries', () => {

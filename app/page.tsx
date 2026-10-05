@@ -222,7 +222,7 @@ export default async function HomePage() {
     <div className="os-slab">
       <SlabTitle
         eyebrow="command center"
-        title={`${greeting()}, Alex`}
+        title={`${greeting()}, Talha`}
         meta={
           /* Honest state-of-the-world line  -  what needs you, straight from live data */
           <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
@@ -270,7 +270,7 @@ export default async function HomePage() {
         />
       </Rise>
 
-      {/* Hero row, Brand Deals' shape: the queue that needs Alex + the volume card */}
+      {/* Hero row, Brand Deals' shape: the queue that needs Talha + the volume card */}
       <div className="grid grid-cols-[2fr_1fr] gap-6 max-[1200px]:grid-cols-1">
         {/* the queue stretches to the volume card's height, like Pipeline does */}
         <Rise as="section" i={2} className="min-w-0 [&>[data-part=card]]:h-full">

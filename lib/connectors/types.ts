@@ -13,7 +13,10 @@ export type ConnectorKind =
   | 'creative'
   | 'knowledge'
   | 'local'
-  | 'orchestration';
+  | 'orchestration'
+  // Added for the keyless public sources in lib/connectors/free-apis.ts, which
+  // are data feeds rather than systems the operator owns.
+  | 'analytics';
 
 export type ConnectorStatus = {
   id: string;

@@ -6,8 +6,6 @@ import { Topbar } from '@/components/Topbar';
 import { CommandPalette } from '@/components/CommandPalette';
 import { ConductorPanel } from '@/components/ConductorPanel';
 import { Toaster } from '@/components/Toaster';
-import { CohortBanner } from '@/components/CohortBanner';
-import { CohortModal } from '@/components/CohortModal';
 import { LensProvider } from '@/lib/hooks/useLens';
 import { getDb } from '@/lib/data';
 import type { PaletteAgent } from '@/lib/palette';
@@ -53,16 +51,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 full-bleed on 32"/ultrawide. See tailwind screens wide/ultra. */}
             <div className="mx-auto max-w-[1280px] wide:max-w-[1760px] ultra:max-w-none">
               {children}
-              {/* Cohort invite — last thing on every view, by construction */}
-              <CohortBanner />
             </div>
           </main>
         </div>
         <CommandPalette agents={paletteAgents()} />
         {/* Notion-style agent dock — the Conductor, aware of the current screen */}
         <ConductorPanel />
-        {/* First-run welcome on the home screen — once per browser */}
-        <CohortModal />
         </Toaster>
       </body>
     </html>

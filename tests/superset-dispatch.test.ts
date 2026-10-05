@@ -128,12 +128,24 @@ describe('POST /api/conductor/dispatch', () => {
   test('201 with workspaceId + branch when the CLI succeeds (fake bin)', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'superset-fake-'));
     const bin = path.join(dir, 'superset');
-    fs.writeFileSync(
-      bin,
-      '#!/bin/sh\nif [ "$1" = "projects" ]; then echo \'[{"id":"proj-9","name":"founder-os"}]\'; else echo \'{"id":"ws-9"}\'; fi\n',
-      { mode: 0o755 },
-    );
-    vi.stubEnv('SUPERSET_BIN', bin);
+    if (process.platform === 'win32') {
+      // A #!/bin/sh script cannot be exec'd on Windows; the route spawns the
+      // configured binary directly, so the fake has to be a real executable.
+      // A .cmd shim runs only under cmd.exe, so the stub is a .bat invoked the
+      // same way the route invokes SUPERSET_BIN.
+      fs.writeFileSync(
+        bin + '.bat',
+        '@echo off\r\nif "%1"=="projects" (echo [{"id":"proj-9","name":"founder-os"}]) else (echo {"id":"ws-9"})\r\n',
+      );
+      vi.stubEnv('SUPERSET_BIN', bin + '.bat');
+    } else {
+      fs.writeFileSync(
+        bin,
+        '#!/bin/sh\nif [ "$1" = "projects" ]; then echo \'[{"id":"proj-9","name":"founder-os"}]\'; else echo \'{"id":"ws-9"}\'; fi\n',
+        { mode: 0o755 },
+      );
+      vi.stubEnv('SUPERSET_BIN', bin);
+    }
     const res = await post({ request: 'Make the sidebar blue' });
     expect(res.status).toBe(201);
     const body = await res.json();

@@ -52,7 +52,7 @@ describe('CommandPalette rebuild (step 8)', () => {
   });
 
   test('keeps the pre-rebuild behaviors: ⌘K, Topbar event, digit jumps, typing guard', () => {
-    expect(palette).toContain("'alex:palette'");
+    expect(palette).toContain("'talha:palette'");
     expect(palette).toContain('DIGIT_VIEWS');
     expect(palette).toMatch(/metaKey/);
     expect(palette).toMatch(/isTyping|isContentEditable/);

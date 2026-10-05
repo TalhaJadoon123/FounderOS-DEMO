@@ -1,4 +1,5 @@
 import { allConnectorStatuses } from '@/lib/connectors';
+import { freeApiSpecs } from '@/lib/connectors/free-apis';
 import { readEnvLocal } from '@/lib/creds';
 import { oauthReadiness } from '@/lib/oauth/store';
 import { connectionCatalog, integrationsByCategory, type CatalogEntry } from '@/lib/integrations-catalog';
@@ -35,6 +36,11 @@ export default async function ConnectionsPage() {
   const popular = catalog.filter((c) => c.popular);
   const categories = [...integrationsByCategory().entries()];
   const v = integrationsVolume({ statuses, catalog });
+  // Keyless public sources: the catalogue (static copy) joined to this load's
+  // live probe results.
+  const freeSources = freeApiSpecs().map(({ probe: _probe, ...rest }) => rest);
+  const freeLive = new Map(statuses.filter((s) => s.id.startsWith('free-')).map((s) => [s.id, s]));
+  const freeLiveStates = freeSources.filter((spec) => freeLive.get(spec.id)?.state === 'connected');
 
   const card = (entry: CatalogEntry) => (
     <ConnectionCard key={entry.slug} entry={entry} guidance={guidanceFor(entry)} oauth={oauthFor(entry.slug)} />
@@ -135,6 +141,53 @@ export default async function ConnectionsPage() {
       <SlabCard i={8} className="mt-6">
         <div id="api-keys" className="scroll-mt-24 px-6 pb-6 pt-5">
           <ApiKeys />
+        </div>
+      </SlabCard>
+
+      {/* Keyless sources. Same honesty rule as the rest of the board: each row
+          shows the state the network actually returned, so it only reads
+          "live" when the API really answered. */}
+      <SlabCard
+        i={9}
+        title="Free public sources"
+        sub={`${freeLiveStates.length}/${freeSources.length} live · no key, no card`}
+        className="mt-6"
+      >
+        <div className="px-6 pb-6 pt-4">
+          <p className="mb-4 max-w-prose text-xs text-os-muted">
+            Every other connector needs a paid plan or a signup. These do not: no API key, no
+            account, no card. Each is probed live, and an unreachable source says so rather than
+            pretending.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {freeSources.map((spec) => {
+              const live = freeLive.get(spec.id);
+              const ok = live?.state === 'connected';
+              return (
+                <div
+                  key={spec.id}
+                  className="pressable rounded-lg border border-os-border bg-os-surface2 p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-os-text">{spec.name}</span>
+                    <Chip tone={ok ? 'ok' : live?.state === 'error' ? 'err' : undefined}>
+                      {ok ? 'live' : live?.state === 'error' ? 'unreachable' : 'unknown'}
+                    </Chip>
+                  </div>
+                  <p className="mt-2 text-xs text-os-muted">{live?.detail ?? spec.purpose}</p>
+                  <p className="mt-2 text-[10.5px] leading-relaxed text-os-dim">{spec.limits}</p>
+                  <a
+                    href={spec.href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-3 inline-block text-[10.5px] text-os-dim underline decoration-dotted hover:text-os-text"
+                  >
+                    docs ↗
+                  </a>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </SlabCard>
     </Slab>

@@ -35,3 +35,12 @@ data/candles/
 .sanitize.mjs
 
 node_modules
+
+# Electron shell: its own node_modules and the unpacked runtime binary. The
+# desktop sources (main.cjs, preload.cjs, package.json) ARE tracked; the
+# ~180 MB electron dist is not.
+desktop/node_modules/
+
+# local run logs from `npm run dev`, `npm run build`, `npm test`, and the
+# desktop shell
+*.log

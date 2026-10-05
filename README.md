@@ -9,12 +9,7 @@ knowledge graph, and a roster of named AI agents that each own a real job.
 
 This repository is the **open-source demo build**. It ships seeded with
 realistic placeholder data, so every page is alive out of the box with no
-accounts, no API keys, and nothing to configure. It's the same system taught,
-live, in the [Founder OS cohort](https://www.founderos.example.com); this repo lets
-you explore and run it yourself.
-
-> Want to build your own, live, with guidance? That's what the cohort is for.
-> [founderos.example.com](https://www.founderos.example.com)
+accounts, no API keys, and nothing to configure.
 
 ---
 
@@ -40,6 +35,35 @@ npm test                     # vitest suite
 npm run typecheck            # tsc --noEmit
 npm run seed                 # re-seed the demo DB (idempotent)
 ```
+
+---
+
+## Desktop app
+
+The OS also runs as a native desktop window — its own taskbar entry, its own
+menu, no browser chrome or address bar.
+
+```bash
+npm run build                # the shell serves the production build
+npm run desktop              # launch it
+npm run desktop:dev          # or launch against `next dev` with HMR
+```
+
+The shell lives in [`desktop/`](desktop/) and boots `next start` itself, then
+points a `BrowserWindow` at it. Three details matter if you fork it:
+
+- It spawns a **real Node**, not Electron's embedded one. `better-sqlite3`
+  ships a compiled addon built for Node's ABI (127 on Node 22); Electron embeds
+  a different one (130), so hosting the server inside `ELECTRON_RUN_AS_NODE`
+  dies with `ERR_DLOPEN_FAILED`.
+- It sets `DATA_DIR` to Electron's `userData` dir. `lib/paths.ts` otherwise
+  puts the SQLite file in `<cwd>/data`, which is not writable once the app is
+  installed under `Program Files`.
+- It picks a **free port** rather than hardcoding 4100, so a `next dev` can run
+  alongside the app.
+
+`desktop/make-electron-shim.cjs` regenerates the `electron` launcher if
+`desktop/node_modules/.bin` is ever empty (an interrupted install).
 
 ---
 
@@ -209,6 +233,48 @@ npm run typecheck # tsc --noEmit
 Tests live in `tests/`, one file per module, using an in-memory SQLite pattern
 so they never touch the seeded dev DB.
 
+### Repairing a broken `node_modules`
+
+An interrupted `npm install` can leave packages half-extracted — files present,
+`package.json` missing — which surfaces as baffling errors like `Can't resolve
+'ai'` or `ERR_DLOPEN_FAILED`. `tools/` has standalone checkers and fixers that
+bypass npm entirely:
+
+```bash
+node tools/audit-lock.cjs        # what the lockfile expects vs what's on disk
+node tools/audit-manifest.cjs    # packages missing their manifest
+node tools/audit-integrity.cjs   # packages missing advertised entry points
+node tools/repair-packages.cjs rollup @next/swc-win32-x64-msvc
+node tools/repair-bin.cjs        # rebuild node_modules/.bin shims
+node tools/repair-esbuild.cjs    # restore the win32-x64 esbuild binary
+```
+
+---
+
+## Free public APIs
+
+Most connectors need a paid plan or a signup, which is why a $0 setup shows a
+wall of `not_configured`. Five sources in
+[`lib/connectors/free-apis.ts`](lib/connectors/free-apis.ts) are the exception:
+**no key, no account, no card**, probed live so the board is honest about
+reachability.
+
+| Source | Used for | Free-tier limits |
+| --- | --- | --- |
+| [World Bank](https://api.worldbank.org) | Macro indicators for /finances and /analytics | Keyless; annual data lags by design |
+| [Frankfurter (ECB)](https://www.frankfurter.app) | Reference FX rates | Keyless; published once per working day |
+| [Open-Meteo](https://open-meteo.com) | Weather for scheduling across time zones | Free for non-commercial use |
+| [Hacker News](https://github.com/HackerNews/API) | Engineering signal for content and /brain | Official API, no key, no published quota |
+| [GitHub search](https://docs.github.com/en/rest) | Repo and topic research | 10 req/min unauthenticated |
+
+```bash
+curl http://localhost:4100/api/free-apis          # all five, probed live
+curl http://localhost:4100/api/free-apis/free-github  # probe one
+```
+
+They appear as their own block on `/integrations`, and each row shows the real
+state the network returned.
+
 ---
 
 ## Deploying to Railway
@@ -235,4 +301,3 @@ MIT. See [`LICENSE`](LICENSE).
 ---
 
 Built as the reference implementation for **Founder OS**.
-[founderos.example.com](https://www.founderos.example.com)

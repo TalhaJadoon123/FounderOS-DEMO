@@ -86,19 +86,6 @@ fixed `Sidebar` (Operate/System groups) + sticky `Topbar` (breadcrumb + ⌘K) +
 `app/api/*` — note `GET /api/brain?q=` runs a hybrid search; bare `GET` returns
 provider status.
 
-## Cohort invite (demo growth surface)
-
-Copy + URL live once in `lib/cohort.ts` (`COHORT_URL`, `COHORT_CTA`,
-`COHORT_STORAGE_KEY`) so the two placements can't drift:
-
-- `CohortBanner` — static footer CTA, rendered in `app/layout.tsx` right after
-  `{children}`, so it is the last thing on **every** view. No client JS.
-- `CohortModal` — first-run welcome pop-up, home screen only, once per browser
-  (`shouldShowCohortModal`; dismissal persists to localStorage). Mounted beside
-  `ConductorPanel` in the layout; it gates itself on `usePathname()`.
-
-Contract lives in `tests/cohort.test.ts`.
-
 ## Conventions
 
 - TDD: failing test first, then implementation. Tests live in `tests/`,

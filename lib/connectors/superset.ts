@@ -22,7 +22,15 @@ const BRANCH_MAX = 80;
 
 const defaultExec: ExecFn = (cmd, args) =>
   new Promise((resolve) => {
-    execFile(cmd, args, { timeout: 60_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
+    // execFile cannot run a .bat/.cmd directly on Windows (Node refuses: EINVAL
+    // unless shell:true), so a Windows-targeted binary is routed through the
+    // shell. That keeps a locally installed CLI callable on Windows without
+    // changing how it is invoked on POSIX.
+    const isWindowsScript = process.platform === 'win32' && /\.(bat|cmd)$/i.test(cmd);
+    const file = isWindowsScript ? process.env.ComSpec ?? 'cmd.exe' : cmd;
+    const fileArgs = isWindowsScript ? ['/c', cmd, ...args] : args;
+
+    execFile(file, fileArgs, { timeout: 60_000, maxBuffer: 4 * 1024 * 1024 }, (err, stdout, stderr) => {
       resolve({
         stdout: stdout?.toString() ?? '',
         // `||` not `??`: on spawn failure stderr is empty — keep the real error

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { closeDb } from '@/lib/data';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { openDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
@@ -125,6 +126,7 @@ describe('PATCH /api/roadmap', () => {
 
   afterAll(() => {
     delete process.env.FOUNDER_OS_DB;
+    closeDb(); // release the SQLite handle so Windows can delete the temp dir
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

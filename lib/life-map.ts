@@ -177,7 +177,7 @@ export function buildLifeMap(): LifeMap {
     {
       id: 'center',
       type: 'center',
-      label: "Alex's Life",
+      label: "Talha's Life",
       color: '#fafafa',
       parent: null,
       detail: 'The core. Everything orbits this.',

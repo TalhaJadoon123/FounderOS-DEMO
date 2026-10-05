@@ -33,7 +33,11 @@ describe('resolveDbPath', () => {
   });
 
   test('no override joins the resolved data dir with the filename', () => {
-    expect(resolveDbPath('ledger.db', undefined, { DATA_DIR: '/data' })).toBe('/data/ledger.db');
+    // path.join, not string concat: on Windows this yields "\data\ledger.db",
+    // which is the correct native separator for a Windows DATA_DIR.
+    expect(resolveDbPath('ledger.db', undefined, { DATA_DIR: '/data' })).toBe(
+      path.join('/data', 'ledger.db')
+    );
   });
 
   test('no override, local dev', () => {

@@ -26,6 +26,7 @@ import { paperclipStatus } from '@/lib/connectors/paperclip';
 import { getBrainProvider } from '@/lib/brain';
 import { resolveManychatKey, runtimeEnv } from '@/lib/creds';
 import { GATED } from '@/lib/connectors/demo-status';
+import { freeApiSpecs, freeApiStatus } from '@/lib/connectors/free-apis';
 import type { ConnectorStatus } from '@/lib/connectors/types';
 
 async function brainConnectorStatus(): Promise<ConnectorStatus> {
@@ -83,6 +84,25 @@ const CHECKS: [string, ConnectorStatus['kind'], () => Promise<ConnectorStatus>][
   ['slack', 'slack', () => slackStatus(runtimeEnv())],
   ['payments', 'payments', () => paymentsStatus(runtimeEnv())],
   ['robinhood', 'payments', () => Promise.resolve(robinhoodStatus(getDb().trading.latestSnapshot()))],
+  // Keyless public sources. Registered individually so the per-key "test"
+  // button can probe one of them, the same as any other row. Each is wrapped to
+  // drop the null freeApiStatus returns for an unknown id, so the tuple type
+  // stays Promise<ConnectorStatus> like every other check.
+  ...freeApiSpecs().map(
+    (spec) =>
+      [spec.id, spec.kind, async (): Promise<ConnectorStatus> => {
+        const probed = await freeApiStatus(spec.id);
+        return (
+          probed ?? {
+            id: spec.id,
+            name: spec.name,
+            kind: spec.kind,
+            state: 'error',
+            detail: `${spec.purpose} — probe returned nothing`,
+          }
+        );
+      }] as [string, ConnectorStatus['kind'], () => Promise<ConnectorStatus>],
+  ),
 ];
 
 /**
@@ -97,6 +117,8 @@ export async function connectorStatusById(id: string): Promise<ConnectorStatus |
   const found = CHECKS.find(([checkId]) => checkId === id);
   if (!found) return null;
   const [checkId, kind, check] = found;
+  // A throwing check becomes an error row: a key row wants to hear why it
+  // failed, not a 500.
   return check().catch(
     (err): ConnectorStatus => ({
       id: checkId,
@@ -107,6 +129,8 @@ export async function connectorStatusById(id: string): Promise<ConnectorStatus |
     }),
   );
 }
+
+
 
 export async function allConnectorStatuses(): Promise<ConnectorStatus[]> {
   return Promise.all(

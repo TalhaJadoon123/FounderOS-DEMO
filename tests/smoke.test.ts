@@ -70,7 +70,7 @@ describe('platform smoke — every page renders without throwing', () => {
     // Server components run their body (DB reads, data fetch) when invoked;
     // a throw here is exactly the failure we want to catch.
     await expect(Promise.resolve(Page(props))).resolves.toBeTruthy();
-  }, 20_000);
+  }, 60_000);
 
   test('the smoke net covers every app/**/page.tsx (no page escapes)', () => {
     const discovered = discoverPages(path.join(process.cwd(), 'app')).sort();

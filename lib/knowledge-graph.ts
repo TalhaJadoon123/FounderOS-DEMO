@@ -28,7 +28,7 @@ export type KGNode = {
   id: string;
   kind: KGNodeKind;
   label: string;
-  ring: number; // 0 = Alex core → 4 = outer (tools)
+  ring: number; // 0 = Talha core → 4 = outer (tools)
   color?: string; // life-area tint (teams)
 };
 
@@ -181,7 +181,7 @@ export function buildKnowledgeGraph(
 
   // Alex at the core — every pillar hangs off him (the life-at-the-core idea
   // folded in from the old life map).
-  nodes.push({ id: SELF_ID, kind: 'self', label: 'Alex', ring: RING.self });
+  nodes.push({ id: SELF_ID, kind: 'self', label: 'Talha', ring: RING.self });
 
   // Live Paperclip board agents (Conductor, Forge, the Hermes pool, …) orbit
   // Alex as an inner ring — real seats from the board API, [] when it's

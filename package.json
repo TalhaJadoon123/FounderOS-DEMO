@@ -14,7 +14,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
-    "brain:docs": "tsx scripts/generate-brain-docs.ts"
+    "brain:docs": "tsx scripts/generate-brain-docs.ts",
+    "desktop": "npm --prefix desktop start",
+    "desktop:dev": "npm --prefix desktop run dev",
+    "desktop:install": "npm --prefix desktop install"
   },
   "dependencies": {
     "@notionhq/client": "^5.22.0",

@@ -67,7 +67,7 @@ describe('buildLifeMap', () => {
   test('has a single center node labeled for Alex', () => {
     const centers = map.nodes.filter((n) => n.type === 'center');
     expect(centers).toHaveLength(1);
-    expect(centers[0].label.toLowerCase()).toContain('alex');
+    expect(centers[0].label.toLowerCase()).toContain('talha');
   });
 
   test('one area node per life area, each linked to the center', () => {

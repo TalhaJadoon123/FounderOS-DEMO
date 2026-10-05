@@ -58,7 +58,7 @@ export function BrainCore({
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Open G-Brain doctor and search"
-          className="group absolute left-1/2 top-1/2 grid h-[27%] w-[27%] -translate-x-1/2 -translate-y-1/2 place-items-end justify-center rounded-full pb-[6%] outline-none ring-os-accent/50 transition-[box-shadow] hover:shadow-[var(--glow)] focus-visible:ring-2"
+          className="pressable group absolute left-1/2 top-1/2 grid h-[27%] w-[27%] -translate-x-1/2 -translate-y-1/2 place-items-end justify-center rounded-full pb-[6%] outline-none ring-os-accent/50 transition-[box-shadow] hover:shadow-[var(--glow)] focus-visible:ring-2"
         >
           <span className="pointer-events-none flex translate-y-3 items-center gap-1 rounded-full border border-os-accent/40 bg-os-bg/80 px-2 py-0.5 font-mono text-[8.5px] uppercase tracking-[0.12em] text-os-accent opacity-0 backdrop-blur transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100">
             <Search className="h-2.5 w-2.5" /> doctor · search

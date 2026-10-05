@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { closeDb } from '@/lib/data';
 import { POST } from '@/app/api/lead-magnets/route';
 import { PATCH, DELETE } from '@/app/api/lead-magnets/[id]/route';
 
@@ -19,6 +20,7 @@ beforeAll(() => {
 
 afterAll(() => {
   delete process.env.FOUNDER_OS_DB;
+  closeDb(); // release the SQLite handle so Windows can delete the temp dir
   fs.rmSync(dir, { recursive: true, force: true });
 });
 

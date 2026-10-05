@@ -136,7 +136,7 @@ export const realAgents: RuntimeAgent[] = [
     id: 'comms-digest',
     name: 'Comms Digest',
     description:
-      'The 9am report: scrapes the last 24h across all four inboxes, WhatsApp and Slack, and ranks who Alex needs to respond to — calls first, then clients, students and family, brand deals, group chats, companies last. Also lists what to unsubscribe from.',
+      'The 9am report: scrapes the last 24h across all four inboxes, WhatsApp and Slack, and ranks who Talha needs to respond to — calls first, then clients, students and family, brand deals, group chats, companies last. Also lists what to unsubscribe from.',
     departmentId: 'dept-comms',
     async run(): Promise<AgentRunResult> {
       const { runAndStoreCommsDigest, digestSummary } = await import('@/lib/comms-digest-run');

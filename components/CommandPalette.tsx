@@ -20,7 +20,7 @@ function isTyping(): boolean {
  * ⌘K — one box for jump / run / ask. Groups: Go to, Run, Ask. Tab cycles scope,
  * ↑↓ move, ↵ fires, Esc closes. Digit keys 1–9 jump views while the palette is
  * closed. No match + ↵ sends the text straight to the Conductor. Mounted once
- * in app/layout.tsx; the Topbar button opens it via the 'alex:palette' event.
+ * in app/layout.tsx; the Topbar button opens it via the 'talha:palette' event.
  */
 export function CommandPalette({ agents }: { agents: PaletteAgent[] }) {
   const [open, setOpen] = useState(false);
@@ -47,10 +47,10 @@ export function CommandPalette({ agents }: { agents: PaletteAgent[] }) {
     };
     const onOpen = () => setOpen(true);
     window.addEventListener('keydown', onKeydown);
-    window.addEventListener('alex:palette', onOpen);
+    window.addEventListener('talha:palette', onOpen);
     return () => {
       window.removeEventListener('keydown', onKeydown);
-      window.removeEventListener('alex:palette', onOpen);
+      window.removeEventListener('talha:palette', onOpen);
     };
   }, [open, router]);
 

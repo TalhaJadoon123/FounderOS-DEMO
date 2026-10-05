@@ -164,7 +164,7 @@ const agents: Agent[] = [
     status: 'active',
     tier: 'worker',
     description:
-      'Negotiates as Vera, Alex\u2019s brand deal manager: qualifies inbound, anchors and counters, chases unpaid invoices, and bumps stalled threads. A tested contact governor decides whether a thread may be touched at all (five bumps maximum, one revival per brand per six months). Drafts only, never sends.',
+      'Negotiates as Vera, Talha\u2019s brand deal manager: qualifies inbound, anchors and counters, chases unpaid invoices, and bumps stalled threads. A tested contact governor decides whether a thread may be touched at all (five bumps maximum, one revival per brand per six months). Drafts only, never sends.',
     model: 'rules + gateway',
     tools: ['ledger', 'imap'],
     parentId: 'sales-agent',
@@ -646,7 +646,7 @@ const sopTasks: SopTask[] = [
       'Connect the four configured IMAP inboxes on the sync cadence',
       'Pull unread counts and every thread newer than the last sweep',
       'Classify each thread: urgent, reply-needed, waiting-on-us, FYI',
-      'Draft suggested replies for reply-needed threads in Alex voice',
+      'Draft suggested replies for reply-needed threads in Talha voice',
       'Hand urgent threads to the escalation queue with a one-line summary',
       'Surface anything from a client domain to the Clients pillar too',
     ],
@@ -857,9 +857,9 @@ const sopTasks: SopTask[] = [
     steps: [
       'Read the OS brand deal store and rank what needs answering today',
       'Check the contact governor before touching any thread, and respect a refusal',
-      'Draft the reply, counter or bump as Vera, speaking about Alex in third person',
+      'Draft the reply, counter or bump as Vera, speaking about Talha in third person',
       'Escalate anything below floor, equity shaped, or asking for a call',
-      'Leave every draft for Alex to send, and never claim one went out',
+      'Leave every draft for Talha to send, and never claim one went out',
     ],
   },
   {
@@ -982,8 +982,8 @@ const sopTasks: SopTask[] = [
     summary: 'The human hands on the threads that need judgment.',
     steps: [
       'Review the escalation queue the workers built overnight',
-      'Draft replies in Alex’s voice for VIP threads',
-      'Send what is cleared, file the rest for Alex’s approval',
+      'Draft replies in Talha’s voice for VIP threads',
+      'Send what is cleared, file the rest for Talha’s approval',
       'Chase any thread waiting on us for more than 24 hours',
       'Close the loop in /comms so nothing dangles',
     ],
@@ -997,7 +997,7 @@ const sopTasks: SopTask[] = [
       'Categorize transactions using the statement’s own categories',
       'Reconcile against the income the agents recorded and chase every gap',
       'Confirm refunds and disputes are reflected in the venture totals',
-      'Deliver the month-end P&L to Alex with three lines of commentary',
+      'Deliver the month-end P&L to Talha with three lines of commentary',
     ],
   },
   {
@@ -1084,7 +1084,7 @@ const roadmap: RoadmapItem[] = [
   { id: 'rm-workers', title: 'Worker pool on the host', quarter: '2026-Q3', status: 'now', departmentId: 'dept-tech', description: 'Cheap model seats behind the Conductor. Hardening and gateway install left.', phaseId: 'phase-3' },
   { id: 'rm-statements', title: 'Statement ingestion', quarter: '2026-Q3', status: 'now', departmentId: 'dept-finance', description: 'Card and bank statements parsed into /finances instead of hand entry.', phaseId: 'phase-1' },
   { id: 'rm-railway', title: 'Move hosting to Railway', quarter: '2026-Q3', status: 'now', departmentId: 'dept-tech', description: 'Every app moving to one platform; the gated OS demo went first as the pilot.', phaseId: 'phase-4' },
-  { id: 'rm-ui', title: 'Interaction rebrand', quarter: '2026-Q3', status: 'now', departmentId: 'dept-tech', description: 'Alex-led design pass over the whole OS now the integrations are live.', phaseId: 'phase-2' },
+  { id: 'rm-ui', title: 'Interaction rebrand', quarter: '2026-Q3', status: 'now', departmentId: 'dept-tech', description: 'Talha-led design pass over the whole OS now the integrations are live.', phaseId: 'phase-2' },
   { id: 'rm-auth', title: 'Auth + remote access', quarter: '2026-Q4', status: 'next', departmentId: 'dept-tech', description: 'Reach FOUNDER OS on the host from anywhere, safely.', phaseId: 'phase-4' },
   { id: 'rm-postiz', title: 'Replace Postly with Postiz', quarter: '2026-Q4', status: 'next', departmentId: 'dept-clients', description: 'Self-hosted scheduler with ungated post and channel analytics.', phaseId: 'phase-1' },
   { id: 'rm-board-embed', title: 'Board fully inside the OS', quarter: '2026-Q4', status: 'later', departmentId: 'dept-tech', description: 'Conductor and 40+ agents driven from the OS, SOPs running as real skills.', phaseId: 'phase-3' },
@@ -1122,7 +1122,7 @@ const socialAccounts: SocialAccount[] = [
   { platform: 'tiktok', handle: '@founderos.ai', url: 'https://tiktok.com/@founderos.ai', order: 2 },
   { platform: 'twitter', handle: '@Founderosai', url: 'https://x.com/Founderosai', order: 3 },
   { platform: 'youtube', handle: '@founderosai', url: 'https://youtube.com/@founderosai', order: 4 },
-  { platform: 'linkedin', handle: 'Alex', url: null, order: 5 },
+  { platform: 'linkedin', handle: 'Talha', url: null, order: 5 },
 ];
 
 // Demo follower counts. LinkedIn has no baseline in this demo, so it gets
@@ -1218,9 +1218,9 @@ const socialDms: SocialDm[] = DM_TARGETS.map((t) => ({
 // threads, inbound + outbound, believable Vantage / FounderOS lead-gen tone.
 const socialDmMessages: SocialDmMessage[] = [
   // Alex — agency owner off a reel
-  ['ig-alex', 'Alex', 'alex', 'in', 'saw your reel on the 3-agent setup 🔥 do you actually work with agencies?', null, '2026-07-18T14:02:00.000Z'],
-  ['ig-alex', 'Alex', 'alex', 'out', 'appreciate it! yeah — agencies are exactly who Vantage is built for. what are you running right now?', null, '2026-07-18T14:09:00.000Z'],
-  ['ig-alex', 'Alex', 'alex', 'in', 'SMMA, ~12 clients, drowning in fulfillment tbh 😅', null, '2026-07-18T14:15:00.000Z'],
+  ['ig-talha', 'Talha', 'talha', 'in', 'saw your reel on the 3-agent setup 🔥 do you actually work with agencies?', null, '2026-07-18T14:02:00.000Z'],
+  ['ig-talha', 'Talha', 'talha', 'out', 'appreciate it! yeah — agencies are exactly who Vantage is built for. what are you running right now?', null, '2026-07-18T14:09:00.000Z'],
+  ['ig-talha', 'Talha', 'talha', 'in', 'SMMA, ~12 clients, drowning in fulfillment tbh 😅', null, '2026-07-18T14:15:00.000Z'],
   // Jordan — keyword flow "SCALE"
   ['ig-jordan', 'Jordan Blake', 'jordanbuilds', 'in', 'SCALE', 'SCALE', '2026-07-18T12:41:00.000Z'],
   ['ig-jordan', 'Jordan Blake', 'jordanbuilds', 'out', 'boom 💥 here’s the free breakdown → founderos.ai/scale. want me to show how it maps to your funnel?', 'SCALE', '2026-07-18T12:41:20.000Z'],
@@ -1533,7 +1533,7 @@ const workflows: Workflow[] = [
         detail: '',
         branch: null,
         ownerKind: 'human',
-        owner: 'Alex · Founder',
+        owner: 'Talha · Founder',
         hoursPerWeek: 4,
         tools: ['calendar', 'ledger'],
         edgeLabel: 'demo',
@@ -1546,7 +1546,7 @@ const workflows: Workflow[] = [
         detail: '',
         branch: null,
         ownerKind: 'human',
-        owner: 'Alex · Founder',
+        owner: 'Talha · Founder',
         hoursPerWeek: 10,
         tools: ['ledger'],
         edgeLabel: 'proposal',
@@ -1559,7 +1559,7 @@ const workflows: Workflow[] = [
         detail: '',
         branch: null,
         ownerKind: 'human',
-        owner: 'Alex · Founder',
+        owner: 'Talha · Founder',
         hoursPerWeek: 5,
         tools: ['proposal-gen', 'gmail'],
         edgeLabel: 'won',
@@ -1620,7 +1620,7 @@ const workflows: Workflow[] = [
         detail: '',
         branch: null,
         ownerKind: 'human',
-        owner: 'Alex · Founder',
+        owner: 'Talha · Founder',
         hoursPerWeek: 8,
         tools: ['ghl', 'calendar'],
         edgeLabel: 'closed',
@@ -1932,7 +1932,7 @@ export const seededCrons: AgentCron[] = [
  * because nothing ever re-ran the seed. The stamp forces exactly one re-seed
  * per change.
  */
-export const SEED_VERSION = '2026-09-30-alex-first-name';
+export const SEED_VERSION = '2026-09-30-talha-first-name';
 
 export function seedDatabase(db: FounderDb): void {
   // INSERT OR REPLACE in every repo makes re-seeding idempotent by id.

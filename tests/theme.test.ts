@@ -9,7 +9,7 @@ describe('theme registry', () => {
     expect(THEMES[0]).toBe(DEFAULT_THEME);
     expect(THEMES).toEqual(['mono', 'mono-light', 'dark', 'light', 'midnight', 'ember']);
     expect(new Set(THEMES).size).toBe(THEMES.length);
-    expect(THEME_STORAGE_KEY).toBe('alex-theme');
+    expect(THEME_STORAGE_KEY).toBe('talha-theme');
   });
 
   test('every theme carries picker metadata: name, blurb, 3 swatch colors', () => {

@@ -57,3 +57,21 @@ export function getDb(): FounderDb {
   syncSeededProposals(instance);
   return instance;
 }
+
+/**
+ * Close the singleton and drop it, so the next getDb() reopens.
+ *
+ * Tests point FOUNDER_OS_DB at a temp file and delete that directory on
+ * teardown. Without an explicit close, the module-level handle still holds the
+ * file (plus its -wal/-shm siblings) and the delete fails with EBUSY on
+ * Windows — the same teardown succeeds on macOS/Linux, so it only ever shows
+ * up on the platform that locks open files.
+ */
+export function closeDb(): void {
+  if (!instance) return;
+  try {
+    instance.close();
+  } finally {
+    instance = null;
+  }
+}

@@ -56,12 +56,12 @@ describe('topbar', () => {
 
   test('keeps this instance breadcrumb and palette event', () => {
     expect(topbar).toContain('founder-os');
-    expect(topbar).toContain("'alex:palette'");
+    expect(topbar).toContain("'talha:palette'");
     expect(topbar.toLowerCase()).not.toContain(H('ben', 'nett'));
   });
 
   test('the palette listens on the same event the topbar dispatches', () => {
-    expect(read('components/CommandPalette.tsx')).toContain("'alex:palette'");
+    expect(read('components/CommandPalette.tsx')).toContain("'talha:palette'");
   });
 });
 

@@ -50,6 +50,7 @@ type RouteEntry = {
   url: string; // includes any required query params
   params?: Record<string, string>; // for dynamic [param] routes
   headers?: Record<string, string>;
+  parse?: 'json' | 'text'; // default json
 };
 
 // Every app/api/**/route.ts that exports GET, with valid params so each returns
@@ -130,6 +131,9 @@ const ROUTES: RouteEntry[] = [
   { route: 'jarvis/discover', load: () => import('@/app/api/jarvis/discover/route'), url: 'http://localhost/api/jarvis/discover' },
   { route: 'jarvis/memory', load: () => import('@/app/api/jarvis/memory/route'), url: 'http://localhost/api/jarvis/memory' },
   { route: 'jarvis/projects/[id]', load: () => import('@/app/api/jarvis/projects/[id]/route'), url: 'http://localhost/api/jarvis/projects/jarvis-launchpad-1', params: { id: 'jarvis-launchpad-1' } },
+  { route: 'jarvis/funding/ledger', load: () => import('@/app/api/jarvis/funding/ledger/route'), url: 'http://localhost/api/jarvis/funding/ledger' },
+  { route: 'jarvis/funding/reconcile', load: () => import('@/app/api/jarvis/funding/reconcile/route'), url: 'http://localhost/api/jarvis/funding/reconcile?projectId=jarvis-launchpad-1' },
+  { route: 'jarvis/funding/export', load: () => import('@/app/api/jarvis/funding/export/route'), url: 'http://localhost/api/jarvis/funding/export', parse: 'text' },
 ];
 
 function discoverGetRoutes(dir: string, base = ''): string[] {
@@ -146,13 +150,17 @@ function discoverGetRoutes(dir: string, base = ''): string[] {
 }
 
 describe('platform smoke — every GET API route answers 200 with JSON', () => {
-  test.each(ROUTES)('GET /api/$route', async ({ load, url, params, headers }) => {
+  test.each(ROUTES)('GET /api/$route', async ({ load, url, params, headers, parse = 'json' }) => {
     const mod = await load();
     expect(mod.GET, 'route should export GET').toBeTypeOf('function');
     const res = (await mod.GET!(new Request(url, { headers }), { params })) as Response;
     expect(res.status, `GET ${url} should be 200 (honest state, not 500/400)`).toBe(200);
-    const body = await res.json();
-    expect(body && typeof body === 'object').toBe(true);
+    const body = parse === 'text' ? await res.text() : await res.json();
+    expect(
+      parse === 'text'
+        ? typeof body === 'string' && body.length > 0
+        : body && typeof body === 'object',
+    ).toBe(true);
   }, 20_000);
 
   /**

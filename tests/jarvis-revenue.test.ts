@@ -33,6 +33,8 @@ describe('Revenue attribution', () => {
       externalId: 'cs_test_123',
       customer: 'buyer@example.com',
       amountCents: 4900,
+      feeCents: 0,
+      netCents: 4900,
       currency: 'USD',
       status: 'paid',
       occurredAt: new Date(1_760_000_000_000).toISOString(),

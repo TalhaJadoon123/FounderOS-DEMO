@@ -28,6 +28,7 @@ import {
   Gauge,
   Crosshair,
   Waypoints,
+  Bot,
 } from 'lucide-react';
 
 export type NavItem = { href: string; label: string; icon: typeof Home };
@@ -76,6 +77,9 @@ export const NAV_SYSTEM: NavItem[] = [
 // At the very bottom: persona templates that can run variants of this platform.
 export const NAV_LIBRARY: NavItem[] = [{ href: '/personas', label: 'Personas', icon: Layers }];
 
+// Jarvis: the autonomous team — watches, verifies, ships, announces, sells, reports.
+export const NAV_JARVIS: NavItem[] = [{ href: '/jarvis', label: 'Jarvis', icon: Bot }];
+
 /** Visible top-to-bottom order across all groups. */
 export const NAV_ORDER: string[] = [
   ...NAV_OPERATE,
@@ -83,6 +87,7 @@ export const NAV_ORDER: string[] = [
   ...NAV_INTELLIGENCE,
   ...NAV_SYSTEM,
   ...NAV_LIBRARY,
+  ...NAV_JARVIS,
 ].map((n) => n.href);
 
 /** Digit keys 1–9 jump to the first nine views in visible order. */

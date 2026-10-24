@@ -11,6 +11,26 @@ import path from 'node:path';
  * copied into this repo.
  */
 
+/**
+ * A value that is only an inline comment (`KEY=   # explanation`) is empty.
+ * `.env.example` uses that shape heavily, and treating the comment as the
+ * secret produced fake "key set" statuses and bogus 401s from every provider.
+ * Quoted values keep `#` verbatim; unquoted values only lose a `#` that is
+ * preceded by whitespace, so passwords like `p#ss` survive.
+ */
+function cleanEnvValue(raw: string): string {
+  let value = raw.trim();
+  const quoted =
+    (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
+    (value.startsWith("'") && value.endsWith("'") && value.length >= 2);
+  if (quoted) return value.slice(1, -1).trim();
+  // `KEY=   # explanation` trims to a value that starts with `#`.
+  if (value.startsWith('#')) return '';
+  const comment = value.search(/\s#/);
+  if (comment >= 0) value = value.slice(0, comment).trim();
+  return value;
+}
+
 export function parseEnvFile(content: string): Record<string, string> {
   const out: Record<string, string> = {};
   for (const raw of content.split('\n')) {
@@ -21,14 +41,7 @@ export function parseEnvFile(content: string): Record<string, string> {
     if (eq <= 0) continue;
     const key = stripped.slice(0, eq).trim();
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
-    let value = stripped.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"') && value.length >= 2) ||
-      (value.startsWith("'") && value.endsWith("'") && value.length >= 2)
-    ) {
-      value = value.slice(1, -1);
-    }
-    out[key] = value;
+    out[key] = cleanEnvValue(stripped.slice(eq + 1));
   }
   return out;
 }
@@ -121,9 +134,17 @@ export function removeEnvLocal(keys: string[]): void {
 }
 
 /** process.env with a fresh .env.local overlay — hand this to connectors that
- *  take an env record so a just-pasted key connects without a restart. */
+ *  take an env record so a just-pasted key connects without a restart.
+ *
+ *  Empty values in .env.local are ignored: a template line like
+ *  `SLACK_BOT_TOKEN=` must not shadow a real token supplied by the host. */
 export function runtimeEnv(): Record<string, string | undefined> {
-  return { ...process.env, ...readEnvLocal() };
+  const local = readEnvLocal();
+  const out: Record<string, string | undefined> = { ...process.env };
+  for (const [key, value] of Object.entries(local)) {
+    if (value.trim()) out[key] = value;
+  }
+  return out;
 }
 
 /** Fresh .env.local first, then process.env, then each env file in order. */

@@ -87,6 +87,17 @@ import {
   BrandDeal,
   DeliverableDecisionSchema,
   type DeliverableDecision,
+  JarvisProjectSchema,
+  JarvisRunSchema,
+  JarvisStepSchema,
+  JarvisActionSchema,
+  JarvisRevenueSchema,
+  type JarvisProject,
+  type JarvisRun,
+  type JarvisStep,
+  type JarvisAction,
+  type JarvisActionStatus,
+  type JarvisRevenue,
 } from '@/lib/schemas';
 
 const DDL = `
@@ -502,6 +513,81 @@ CREATE TABLE IF NOT EXISTS skills (
   markdown TEXT NOT NULL DEFAULT '',
   ord INTEGER NOT NULL DEFAULT 0
 );
+
+-- Jarvis: one row per product the operator sells, plus its run/step/action
+-- audit trail. Secrets are never stored here: deployHookEnv names an env var.
+CREATE TABLE IF NOT EXISTS jarvis_projects (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  repo TEXT NOT NULL DEFAULT '',
+  branch TEXT NOT NULL DEFAULT 'main',
+  deploy_url TEXT NOT NULL DEFAULT '',
+  health_url TEXT NOT NULL DEFAULT '',
+  checkout_url TEXT NOT NULL DEFAULT '',
+  stripe_price_id TEXT NOT NULL DEFAULT '',
+  deploy_hook_env TEXT NOT NULL DEFAULT 'VERCEL_DEPLOY_HOOK_URL',
+  local_path TEXT NOT NULL DEFAULT '',
+  verify_command TEXT NOT NULL DEFAULT '',
+  price_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'draft',
+  autonomy TEXT NOT NULL DEFAULT 'assisted',
+  health TEXT NOT NULL DEFAULT 'unknown',
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  last_run_at TEXT
+);
+CREATE TABLE IF NOT EXISTS jarvis_runs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  trigger TEXT NOT NULL,
+  status TEXT NOT NULL,
+  started_at TEXT NOT NULL,
+  finished_at TEXT,
+  summary TEXT NOT NULL DEFAULT ''
+);
+CREATE TABLE IF NOT EXISTS jarvis_steps (
+  id TEXT PRIMARY KEY,
+  run_id TEXT NOT NULL,
+  project_id TEXT NOT NULL,
+  stage TEXT NOT NULL,
+  seq INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  started_at TEXT NOT NULL,
+  finished_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS jarvis_actions (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  run_id TEXT,
+  kind TEXT NOT NULL,
+  title TEXT NOT NULL,
+  risk TEXT NOT NULL,
+  status TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL,
+  decided_at TEXT
+);
+CREATE TABLE IF NOT EXISTS jarvis_revenue (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  source TEXT NOT NULL,
+  external_id TEXT NOT NULL UNIQUE,
+  customer TEXT NOT NULL DEFAULT '',
+  amount_cents INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'paid',
+  occurred_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS jarvis_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_jarvis_runs_project ON jarvis_runs (project_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_jarvis_steps_run ON jarvis_steps (run_id, seq);
+CREATE INDEX IF NOT EXISTS idx_jarvis_actions_status ON jarvis_actions (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_jarvis_revenue_project ON jarvis_revenue (project_id, occurred_at DESC);
 `;
 
 /** Databases created before the hierarchy build lack these columns. */
@@ -565,6 +651,59 @@ function migrateSkillsTable(db: InstanceType<typeof Database>): void {
   if (columns.size > 0 && !columns.has('markdown')) {
     db.exec("ALTER TABLE skills ADD COLUMN markdown TEXT NOT NULL DEFAULT ''");
     db.exec('DELETE FROM skills');
+  }
+}
+
+/** Jarvis tables + defaults, applied on every open so existing installs get them. */
+function migrateJarvisTables(db: InstanceType<typeof Database>): void {
+  const settings = new Set(
+    (db.prepare('PRAGMA table_info(jarvis_settings)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (settings.size > 0 && !settings.has('autopilot')) {
+    // Legacy databases added this column; the key/value row is what the app
+    // actually reads. Keep the column so old installs keep opening.
+    db.exec("ALTER TABLE jarvis_settings ADD COLUMN autopilot TEXT NOT NULL DEFAULT 'assisted'");
+  }
+
+  // Real verify-stage columns, added after the first Jarvis ship.
+  const projectColumns = new Set(
+    (db.prepare('PRAGMA table_info(jarvis_projects)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (projectColumns.size > 0 && !projectColumns.has('local_path')) {
+    db.exec("ALTER TABLE jarvis_projects ADD COLUMN local_path TEXT NOT NULL DEFAULT ''");
+  }
+  if (projectColumns.size > 0 && !projectColumns.has('verify_command')) {
+    db.exec("ALTER TABLE jarvis_projects ADD COLUMN verify_command TEXT NOT NULL DEFAULT ''");
+  }
+
+  // No demo project. A real install starts empty and the operator adds (or
+  // discovers) the projects Jarvis should actually run.
+  //
+  // One-time cleanup for databases created by the earlier demo seed: remove
+  // the untouched "Launchpad Cohort" placeholder and its noise runs. A real
+  // project that happens to use that name is protected by the repo/deploy
+  // checks, so this cannot delete operator data.
+  const seeded = db
+    .prepare(
+      "SELECT id FROM jarvis_projects WHERE id = 'jarvis-launchpad-1' AND name = 'Launchpad Cohort' AND repo = '' AND deploy_url = '' AND checkout_url = ''",
+    )
+    .get() as { id: string } | undefined;
+  if (seeded) {
+    db.prepare('DELETE FROM jarvis_steps WHERE project_id = ?').run(seeded.id);
+    db.prepare('DELETE FROM jarvis_runs WHERE project_id = ?').run(seeded.id);
+    db.prepare('DELETE FROM jarvis_actions WHERE project_id = ?').run(seeded.id);
+    db.prepare('DELETE FROM jarvis_revenue WHERE project_id = ?').run(seeded.id);
+    db.prepare('DELETE FROM jarvis_projects WHERE id = ?').run(seeded.id);
+  }
+
+  // Autonomy default is "assisted": Jarvis watches and proposes, and never
+  // touches money without an explicit yes. The operator can switch to
+  // autopilot in Settings.
+  const autonomy = db
+    .prepare("SELECT value FROM jarvis_settings WHERE key = 'autopilot'")
+    .get() as { value: string } | undefined;
+  if (!autonomy) {
+    db.prepare("INSERT INTO jarvis_settings (key, value) VALUES ('autopilot', 'assisted')").run();
   }
 }
 
@@ -672,6 +811,7 @@ export function openDb(path: string) {
   migrateLeadMagnetsTable(db);
   migrateProposalsTable(db);
   migrateRoadmapTable(db);
+  migrateJarvisTables(db);
 
   const departments = {
     all(): Department[] {
@@ -2075,6 +2215,233 @@ export function openDb(path: string) {
     deliverableDecisions,
     workflows,
     skills,
+    jarvis: {
+      projects: {
+        all(): JarvisProject[] {
+          return (db.prepare('SELECT * FROM jarvis_projects ORDER BY updated_at DESC').all() as any[]).map(
+            (r) =>
+              JarvisProjectSchema.parse({
+                id: r.id,
+                name: r.name,
+                repo: r.repo,
+                branch: r.branch,
+                deployUrl: r.deploy_url,
+                healthUrl: r.health_url,
+                checkoutUrl: r.checkout_url,
+                stripePriceId: r.stripe_price_id,
+                deployHookEnv: r.deploy_hook_env,
+                localPath: r.local_path ?? '',
+                verifyCommand: r.verify_command ?? '',
+                priceCents: r.price_cents,
+                currency: r.currency,
+                status: r.status,
+                autonomy: r.autonomy,
+                health: r.health,
+                createdAt: r.created_at,
+                updatedAt: r.updated_at,
+                lastRunAt: r.last_run_at,
+              }),
+          );
+        },
+        upsert(p: JarvisProject): void {
+          JarvisProjectSchema.parse(p);
+          const now = new Date().toISOString();
+          db.prepare(
+            'INSERT OR REPLACE INTO jarvis_projects (id, name, repo, branch, deploy_url, health_url, checkout_url, stripe_price_id, deploy_hook_env, local_path, verify_command, price_cents, currency, status, autonomy, health, created_at, updated_at, last_run_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(
+            p.id,
+            p.name,
+            p.repo,
+            p.branch,
+            p.deployUrl,
+            p.healthUrl,
+            p.checkoutUrl,
+            p.stripePriceId,
+            p.deployHookEnv,
+            p.localPath,
+            p.verifyCommand,
+            p.priceCents,
+            p.currency,
+            p.status,
+            p.autonomy,
+            p.health,
+            p.createdAt,
+            now,
+            p.lastRunAt,
+          );
+        },
+        delete(id: string): boolean {
+          const exists = db.prepare('SELECT 1 FROM jarvis_projects WHERE id = ?').get(id);
+          if (!exists) return false;
+          db.prepare('DELETE FROM jarvis_steps WHERE project_id = ?').run(id);
+          db.prepare('DELETE FROM jarvis_runs WHERE project_id = ?').run(id);
+          db.prepare('DELETE FROM jarvis_actions WHERE project_id = ?').run(id);
+          db.prepare('DELETE FROM jarvis_revenue WHERE project_id = ?').run(id);
+          db.prepare('DELETE FROM jarvis_projects WHERE id = ?').run(id);
+          return true;
+        },
+      },
+      runs: {
+        insert(r: JarvisRun): void {
+          JarvisRunSchema.parse(r);
+          db.prepare(
+            'INSERT OR REPLACE INTO jarvis_runs (id, project_id, trigger, status, started_at, finished_at, summary) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          ).run(r.id, r.projectId, r.trigger, r.status, r.startedAt, r.finishedAt, r.summary);
+        },
+        byProject(projectId: string): JarvisRun[] {
+          return (
+            db
+              .prepare(
+                'SELECT * FROM jarvis_runs WHERE project_id = ? ORDER BY started_at DESC',
+              )
+              .all(projectId) as any[]
+          ).map((r) =>
+            JarvisRunSchema.parse({
+              id: r.id,
+              projectId: r.project_id,
+              trigger: r.trigger,
+              status: r.status,
+              startedAt: r.started_at,
+              finishedAt: r.finished_at,
+              summary: r.summary,
+            }),
+          );
+        },
+      },
+      steps: {
+        insert(s: JarvisStep): void {
+          JarvisStepSchema.parse(s);
+          db.prepare(
+            'INSERT OR REPLACE INTO jarvis_steps (id, run_id, project_id, stage, seq, status, detail, started_at, finished_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(s.id, s.runId, s.projectId, s.stage, s.seq, s.status, s.detail, s.startedAt, s.finishedAt);
+        },
+        byRun(runId: string): JarvisStep[] {
+          return (
+            db.prepare('SELECT * FROM jarvis_steps WHERE run_id = ? ORDER BY seq').all(runId) as any[]
+          ).map((s) =>
+            JarvisStepSchema.parse({
+              id: s.id,
+              runId: s.run_id,
+              projectId: s.project_id,
+              stage: s.stage,
+              seq: s.seq,
+              status: s.status,
+              detail: s.detail,
+              startedAt: s.started_at,
+              finishedAt: s.finished_at,
+            }),
+          );
+        },
+      },
+      actions: {
+        all(): JarvisAction[] {
+          return (
+            db.prepare('SELECT * FROM jarvis_actions ORDER BY status, created_at DESC').all() as any[]
+          ).map((a) =>
+            JarvisActionSchema.parse({
+              id: a.id,
+              projectId: a.project_id,
+              runId: a.run_id,
+              kind: a.kind,
+              title: a.title,
+              risk: a.risk,
+              status: a.status,
+              payload: typeof a.payload === 'string' ? JSON.parse(a.payload) : a.payload,
+              createdAt: a.created_at,
+              decidedAt: a.decided_at,
+            }),
+          );
+        },
+        pending(): JarvisAction[] {
+          return (
+            db
+              .prepare(
+                "SELECT * FROM jarvis_actions WHERE status = 'pending' ORDER BY created_at DESC",
+              )
+              .all() as any[]
+          ).map((a) =>
+            JarvisActionSchema.parse({
+              id: a.id,
+              projectId: a.project_id,
+              runId: a.run_id,
+              kind: a.kind,
+              title: a.title,
+              risk: a.risk,
+              status: a.status,
+              payload: typeof a.payload === 'string' ? JSON.parse(a.payload) : a.payload,
+              createdAt: a.created_at,
+              decidedAt: a.decided_at,
+            }),
+          );
+        },
+        insert(a: JarvisAction): void {
+          JarvisActionSchema.parse(a);
+          const payload = typeof a.payload === 'string' ? a.payload : JSON.stringify(a.payload);
+          db.prepare(
+            'INSERT OR REPLACE INTO jarvis_actions (id, project_id, run_id, kind, title, risk, status, payload, created_at, decided_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(a.id, a.projectId, a.runId, a.kind, a.title, a.risk, a.status, payload, a.createdAt, a.decidedAt);
+        },
+        decide(id: string, status: JarvisActionStatus): void {
+          const now = new Date().toISOString();
+          db.prepare('UPDATE jarvis_actions SET status = ?, decided_at = ? WHERE id = ?').run(status, now, id);
+        },
+      },
+      revenue: {
+        insert(r: JarvisRevenue): void {
+          JarvisRevenueSchema.parse(r);
+          db.prepare(
+            'INSERT OR REPLACE INTO jarvis_revenue (id, project_id, source, external_id, customer, amount_cents, currency, status, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(r.id, r.projectId, r.source, r.externalId, r.customer, r.amountCents, r.currency, r.status, r.occurredAt);
+        },
+        byProject(projectId: string): JarvisRevenue[] {
+          return (
+            db
+              .prepare(
+                'SELECT * FROM jarvis_revenue WHERE project_id = ? ORDER BY occurred_at DESC',
+              )
+              .all(projectId) as any[]
+          ).map((r) =>
+            JarvisRevenueSchema.parse({
+              id: r.id,
+              projectId: r.project_id,
+              source: r.source,
+              externalId: r.external_id,
+              customer: r.customer,
+              amountCents: r.amount_cents,
+              currency: r.currency,
+              status: r.status,
+              occurredAt: r.occurred_at,
+            }),
+          );
+        },
+        all(): JarvisRevenue[] {
+          return (
+            db.prepare('SELECT * FROM jarvis_revenue ORDER BY occurred_at DESC').all() as any[]
+          ).map((r) =>
+            JarvisRevenueSchema.parse({
+              id: r.id,
+              projectId: r.project_id,
+              source: r.source,
+              externalId: r.external_id,
+              customer: r.customer,
+              amountCents: r.amount_cents,
+              currency: r.currency,
+              status: r.status,
+              occurredAt: r.occurred_at,
+            }),
+          );
+        },
+      },
+      settings: {
+        get(key: string): string | null {
+          return (db.prepare('SELECT value FROM jarvis_settings WHERE key = ?').get(key) as { value: string } | undefined)
+            ?.value ?? null;
+        },
+        set(key: string, value: string): void {
+          db.prepare('INSERT OR REPLACE INTO jarvis_settings (key, value) VALUES (?, ?)').run(key, value);
+        },
+      },
+    },
     close: () => db.close(),
   };
 }

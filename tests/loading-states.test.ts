@@ -34,7 +34,7 @@ describe('every top-level route has an instant loading state', () => {
     expect(firstLevelSegments().sort()).toEqual(
       [
         'adpilot', 'agents', 'analytics', 'blueprint', 'brain', 'brand-deals', 'chats', 'comms', 'content',
-        'doctor', 'finances', 'funnel', 'integrations', 'org', 'personas',
+        'doctor', 'finances', 'funnel', 'integrations', 'jarvis', 'org', 'personas',
         'reference', 'roadmap', 'skills', 'social', 'tasks', 'trading', 'usage',
         'workflows',
       ].sort(),

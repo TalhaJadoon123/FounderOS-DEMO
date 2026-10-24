@@ -3,6 +3,28 @@ import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
+// The systems route probes every provider by design. This net only asserts the
+// HTTP contract, so it exercises the route against a deterministic board.
+vi.mock('@/lib/jarvis/systems', () => ({
+  listSystems: async () => ({
+    systems: [],
+    counts: { total: 0, connected: 0, notConfigured: 0, error: 0, selfServiceConnected: 0 },
+    lastProbeAt: null,
+    newlyConnected: [],
+    lost: [],
+    needsKeys: [],
+  }),
+  probeAllSystems: async () => ({
+    systems: [],
+    counts: { total: 0, connected: 0, notConfigured: 0, error: 0, selfServiceConnected: 0 },
+    lastProbeAt: null,
+    newlyConnected: [],
+    lost: [],
+    needsKeys: [],
+  }),
+  probeSystem: async () => null,
+}));
+
 beforeAll(() => {
   process.env.FOUNDER_OS_DB = path.join(mkdtempSync(path.join(tmpdir(), 'founder-os-apismoke-')), 'test.db');
   process.env.FUNNEL_PROVIDER = 'seed'; // keep /api/funnel off the live Attio API in tests
@@ -97,6 +119,17 @@ const ROUTES: RouteEntry[] = [
   { route: 'tools', load: () => import('@/app/api/tools/route'), url: 'http://localhost/api/tools' },
   { route: 'ventures', load: () => import('@/app/api/ventures/route'), url: 'http://localhost/api/ventures' },
   { route: 'webhooks/manychat', load: () => import('@/app/api/webhooks/manychat/route'), url: 'http://localhost/api/webhooks/manychat', headers: { 'x-manychat-secret': 'smoke-manychat-token' } },
+  { route: 'jarvis/projects', load: () => import('@/app/api/jarvis/projects/route'), url: 'http://localhost/api/jarvis/projects' },
+  { route: 'jarvis/metrics', load: () => import('@/app/api/jarvis/metrics/route'), url: 'http://localhost/api/jarvis/metrics' },
+  { route: 'jarvis/health', load: () => import('@/app/api/jarvis/health/route'), url: 'http://localhost/api/jarvis/health' },
+  { route: 'jarvis/autopilot', load: () => import('@/app/api/jarvis/autopilot/route'), url: 'http://localhost/api/jarvis/autopilot' },
+  { route: 'jarvis/actions', load: () => import('@/app/api/jarvis/actions/route'), url: 'http://localhost/api/jarvis/actions' },
+  { route: 'jarvis/systems', load: () => import('@/app/api/jarvis/systems/route'), url: 'http://localhost/api/jarvis/systems' },
+  { route: 'health', load: () => import('@/app/api/health/route'), url: 'http://localhost/api/health' },
+  { route: 'jarvis/audit', load: () => import('@/app/api/jarvis/audit/route'), url: 'http://localhost/api/jarvis/audit' },
+  { route: 'jarvis/discover', load: () => import('@/app/api/jarvis/discover/route'), url: 'http://localhost/api/jarvis/discover' },
+  { route: 'jarvis/memory', load: () => import('@/app/api/jarvis/memory/route'), url: 'http://localhost/api/jarvis/memory' },
+  { route: 'jarvis/projects/[id]', load: () => import('@/app/api/jarvis/projects/[id]/route'), url: 'http://localhost/api/jarvis/projects/jarvis-launchpad-1', params: { id: 'jarvis-launchpad-1' } },
 ];
 
 function discoverGetRoutes(dir: string, base = ''): string[] {

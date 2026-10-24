@@ -36,6 +36,23 @@ describe('parseEnvFile', () => {
   test('keeps = signs inside values', () => {
     expect(parseEnvFile('AUTH=Basic dXNlcjpwYXNz==').AUTH).toBe('Basic dXNlcjpwYXNz==');
   });
+
+  test('treats a template inline comment as an empty value', () => {
+    // .env.example ships lines like `STRIPE_SECRET_KEY=   # full client...`.
+    // The comment is documentation, not a secret; treating it as one made
+    // every provider return a bogus 401 and made the connections board lie.
+    const parsed = parseEnvFile(
+      ['STRIPE_SECRET_KEY=   # full client implemented', 'BEEHIIV_API_KEY=  # Beehiiv key', 'REAL_KEY=abc # trailing note'].join('\n'),
+    );
+    expect(parsed.STRIPE_SECRET_KEY).toBe('');
+    expect(parsed.BEEHIIV_API_KEY).toBe('');
+    expect(parsed.REAL_KEY).toBe('abc');
+  });
+
+  test('keeps a # that is part of a password', () => {
+    expect(parseEnvFile('PASSWORD=p#ss#word').PASSWORD).toBe('p#ss#word');
+    expect(parseEnvFile('QUOTED="a # b"').QUOTED).toBe('a # b');
+  });
 });
 
 describe('the credential fallback file', () => {
@@ -107,6 +124,13 @@ describe('env.local as a live credential store (connect flow)', () => {
     expect(env.ONLY_PROCESS_KEY).toBe('proc');
     expect(env.ONLY_FILE_KEY).toBe('file');
     delete process.env.ONLY_PROCESS_KEY;
+  });
+
+  test('runtimeEnv does not let an empty template key shadow a host secret', () => {
+    process.env.HOST_ONLY_SECRET = 'real-token';
+    upsertEnvLocal({ HOST_ONLY_SECRET: '' });
+    expect(runtimeEnv().HOST_ONLY_SECRET).toBe('real-token');
+    delete process.env.HOST_ONLY_SECRET;
   });
 });
 

@@ -172,20 +172,33 @@ describe('robinhoodStatus', () => {
     expect(s.id).toBe('robinhood');
   });
 
-  test('connected with a freshness detail when a snapshot exists', () => {
+  test('connected with a freshness detail when a live snapshot exists', () => {
     const now = new Date('2026-08-13T15:05:00.000Z');
-    const s = robinhoodStatus(SNAP, now);
+    const live = { ...SNAP, source: 'robinhood' as const };
+    const s = robinhoodStatus(live, now);
     expect(s.state).toBe('connected');
     expect(s.detail).toMatch(/ago/);
-    expect(s.meta?.accountValueUsd).toBe(SNAP.accountValueUsd);
+    expect(s.meta?.accountValueUsd).toBe(live.accountValueUsd);
   });
 
   test('reports the combined value and account count when fed both accounts', () => {
     const now = new Date('2026-08-13T15:05:00.000Z');
-    const s = robinhoodStatus([SNAP, AGENTIC], now);
+    const s = robinhoodStatus(
+      [
+        { ...SNAP, source: 'robinhood' as const },
+        { ...AGENTIC, source: 'robinhood' as const },
+      ],
+      now,
+    );
     expect(s.state).toBe('connected');
     expect(s.meta?.accountValueUsd).toBe(10850.42);
     expect(s.detail).toMatch(/2 accounts/);
+  });
+
+  test('seed-only snapshots never make the connector green', () => {
+    const s = robinhoodStatus(SNAP);
+    expect(s.state).toBe('not_configured');
+    expect(s.detail).toMatch(/seeded demo snapshots/i);
   });
 
   test('not_configured for an empty account list', () => {

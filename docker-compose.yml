@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------
+# Founder OS — docker-compose.yml
+#
+#   docker compose up -d            # production-ish run
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up  # dev with HMR
+# ---------------------------------------------------------------
+
+services:
+  founder-os:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: founder-os
+    restart: unless-stopped
+    ports:
+      - "4100:4100"
+    env_file:
+      - .env.local
+    environment:
+      - NODE_ENV=production
+      - PORT=4100
+      - DATA_DIR=/data
+      - FOUNDER_OS_DB=/data/founder-os.db
+      - NEXT_DIST_DIR=.next
+    volumes:
+      # Persist the SQLite DB across container restarts.
+      - founder-os-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4100/api/health').then(r=>r.ok?process.exit(0):process.exit(1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    networks:
+      - founder-os
+
+networks:
+  founder-os:
+    driver: bridge
+
+volumes:
+  founder-os-data:
+    driver: local

@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
@@ -10,12 +9,6 @@ import { LensProvider } from '@/lib/hooks/useLens';
 import { getDb } from '@/lib/data';
 import type { PaletteAgent } from '@/lib/palette';
 import { THEME_INIT_SCRIPT } from '@/lib/theme';
-
-const fontMono = JetBrains_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-mono',
-});
 
 export const metadata: Metadata = {
   title: 'FOUNDER OS',
@@ -33,7 +26,7 @@ function paletteAgents(): PaletteAgent[] {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={fontMono.variable} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Apply the persisted theme before first paint — no dark↔light flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />

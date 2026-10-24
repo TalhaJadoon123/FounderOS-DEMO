@@ -1,4 +1,4 @@
-import { NAV_OPERATE, NAV_AGENTS, NAV_INTELLIGENCE, NAV_SYSTEM, NAV_LIBRARY } from '@/lib/nav';
+import { NAV_OPERATE, NAV_AGENTS, NAV_INTELLIGENCE, NAV_SYSTEM, NAV_LIBRARY, NAV_JARVIS } from '@/lib/nav';
 
 export type PaletteKind = 'go' | 'run' | 'ask';
 export type PaletteScope = 'all' | PaletteKind;
@@ -47,6 +47,7 @@ const NAV_ALIASES: Record<string, string[]> = {
   '/analytics': ['metrics', 'numbers'],
   '/reference': ['brm', 'domains', 'model'],
   '/personas': ['templates', 'variants'],
+  '/jarvis': ['autopilot', 'jarvis', 'robot', 'ship', 'sell'],
 };
 
 const NAV_GROUPS: [string, { href: string; label: string }[]][] = [
@@ -55,6 +56,7 @@ const NAV_GROUPS: [string, { href: string; label: string }[]][] = [
   ['Intelligence', NAV_INTELLIGENCE],
   ['System', NAV_SYSTEM],
   ['Library', NAV_LIBRARY],
+  ['Jarvis', NAV_JARVIS],
 ];
 
 // Off-OS jumps that used to live in the flat command list. Entries for

@@ -27,6 +27,7 @@ export async function register() {
 
   startFailoverTick(port);
   startCronTick(port);
+  startJarvisTick(port);
 }
 
 /**
@@ -103,5 +104,46 @@ function startCronTick(port: string) {
   };
 
   setTimeout(tick, 30_000).unref?.();
+  setInterval(tick, everyMs).unref?.();
+}
+
+/**
+ * The Jarvis autopilot tick. Every 5 minutes (configurable), if autopilot is
+ * enabled and the kill switch is off, POSTs /api/jarvis/schedule so Jarvis
+ * runs its watch→verify→ship→announce→sell→report loop across all projects.
+ *
+ * Same fetch-over-HTTP shape as the other ticks: instrumentation.ts is traced
+ * for the edge runtime and must not import better-sqlite3 or the DB layer.
+ * The schedule route itself checks the kill switch and autonomy setting, so
+ * this tick is harmless when Jarvis is in observe/assisted mode.
+ */
+function startJarvisTick(port: string) {
+  if (process.env.JARVIS_DISABLE_TICK === '1') return;
+  const everyMs = Number(process.env.JARVIS_TICK_INTERVAL_MS ?? 5 * 60_000);
+  if (!Number.isFinite(everyMs) || everyMs < 60_000) return;
+
+  const secret = process.env.JARVIS_SCHEDULE_SECRET ?? '';
+
+  const tick = async () => {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/api/jarvis/schedule`, {
+        method: 'POST',
+        headers: secret ? { 'Content-Type': 'application/json' } : {},
+        body: secret ? JSON.stringify({ secret }) : undefined,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok) return;
+      const body = (await res.json()) as { results?: { projectId: string; name: string; status: string; summary: string }[] };
+      for (const r of body.results ?? []) {
+        if (r.status !== 'ok') {
+          console.log(`[jarvis] ${r.name}: ${r.status} — ${r.summary.slice(0, 200)}`);
+        }
+      }
+    } catch (err) {
+      // Silent on network errors — the server may not be up yet.
+    }
+  };
+
+  setTimeout(tick, 45_000).unref?.();
   setInterval(tick, everyMs).unref?.();
 }

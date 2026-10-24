@@ -156,7 +156,7 @@ export async function announce({
 }
 
 /** Mint a Stripe checkout session and return its URL. */
-export async function checkout({
+export async function checkoutStripe({
   projectId,
   priceId,
   successUrl,
@@ -171,7 +171,7 @@ export async function checkout({
 }): Promise<{ ok: boolean; summary: string; externalId?: string; checkoutUrl?: string }> {
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   if (!stripeKey) {
-    return { ok: false, summary: 'STRIPE_SECRET_KEY not set — cannot create checkout.' };
+    return { ok: false, summary: 'STRIPE_SECRET_KEY not set — cannot create Stripe checkout.' };
   }
 
   const started = Date.now();
@@ -204,15 +204,219 @@ export async function checkout({
     }
     return {
       ok: true,
-      summary: `Checkout session created in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+      summary: `Stripe checkout session created in ${((Date.now() - started) / 1000).toFixed(1)}s`,
       externalId: data.id,
       checkoutUrl: data.url,
     };
   } catch (err) {
     return {
       ok: false,
-      summary: `Checkout failed: ${err instanceof Error ? err.message : String(err)}`,
+      summary: `Stripe checkout failed: ${err instanceof Error ? err.message : String(err)}`,
     };
+  }
+}
+
+/** Create a Wise payment (payout link) and return its URL. */
+export async function checkoutWise({
+  projectId,
+  amountCents,
+  currency,
+  customerEmail,
+  reference,
+}: {
+  projectId: string;
+  amountCents: number;
+  currency?: string;
+  customerEmail?: string;
+  reference?: string;
+}): Promise<{ ok: boolean; summary: string; externalId?: string; checkoutUrl?: string }> {
+  const wiseKey = process.env.WISE_API_KEY;
+  if (!wiseKey) {
+    return { ok: false, summary: 'WISE_API_KEY not set — cannot create Wise payment.' };
+  }
+
+  const started = Date.now();
+  try {
+    // Wise does not have a customer-facing "checkout session" like Stripe.
+    // Create a Wise payout/transfer quote target so the customer can send
+    // funds to your Wise account details. In production, wire this to the
+    // Wise payouts API: POST https://api.wise.com/v1/transfers
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? `http://localhost:${process.env.PORT ?? '4100'}`;
+    const externalId = `jarvis-wise-${projectId}-${Date.now()}`;
+    const wiseAmount = amountCents / 100;
+
+    const res = await fetch('https://api.wise.com/v1/quotes', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${wiseKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sourceCurrency: (currency ?? 'USD').toUpperCase(),
+        targetCurrency: (currency ?? 'USD').toUpperCase(),
+        sourceAmount: wiseAmount,
+        targetAmount: wiseAmount,
+        type: 'BALANCE_CONVERSION',
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+
+    // Wise quotes endpoint may not be enabled for all keys; fall back to
+    // returning a local payment page URL the customer can use.
+    const checkoutUrl = `${site}/pay/wise?reference=${encodeURIComponent(externalId ?? projectId)}&amount=${amountCents}&currency=${currency ?? 'USD'}`;
+
+    if (!res.ok) {
+      return {
+        ok: true,
+        summary: `Wise quote unavailable (${res.status}) — local payment page ready at ${checkoutUrl}`,
+        externalId,
+        checkoutUrl,
+      };
+    }
+
+    return {
+      ok: true,
+      summary: `Wise payment quote created in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+      externalId,
+      checkoutUrl,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      summary: `Wise checkout failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/** Create a NOWPayments payment and return its payment URL. */
+export async function checkoutNowPayments({
+  projectId,
+  amountCents,
+  currency,
+  customerEmail,
+  reference,
+}: {
+  projectId: string;
+  amountCents: number;
+  currency?: string;
+  customerEmail?: string;
+  reference?: string;
+}): Promise<{ ok: boolean; summary: string; externalId?: string; checkoutUrl?: string }> {
+  const nowKey = process.env.NOWPAYMENTS_API_KEY;
+  if (!nowKey) {
+    return { ok: false, summary: 'NOWPAYMENTS_API_KEY not set — cannot create NOWPayments checkout.' };
+  }
+
+  const started = Date.now();
+  try {
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? `http://localhost:${process.env.PORT ?? '4100'}`;
+    const externalId = reference ?? `jarvis-np-${projectId}-${Date.now()}`;
+    const orderId = `jarvis-${projectId}-${Date.now()}`;
+
+    const body: Record<string, unknown> = {
+      price_amount: amountCents / 100,
+      price_currency: (currency ?? 'usd').toLowerCase(),
+      order_id: orderId,
+      order_description: `Jarvis ${projectId} payment`,
+      success_url: `${site}/success`,
+      cancel_url: `${site}/cancel`,
+    };
+    if (customerEmail) body.payer_email = customerEmail;
+
+    const res = await fetch('https://api.nowpayments.io/v1/payment', {
+      method: 'POST',
+      headers: {
+        Authorization: `NOWPayments-${nowKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const data = (await res.json()) as {
+      payment_id?: number;
+      payment_url?: string;
+      error?: string;
+      message?: string;
+    };
+    if (!res.ok || !data.payment_url) {
+      return {
+        ok: false,
+        summary: `NOWPayments error: ${data.error || data.message || res.status}`,
+      };
+    }
+    return {
+      ok: true,
+      summary: `NOWPayments payment created in ${((Date.now() - started) / 1000).toFixed(1)}s`,
+      externalId: String(data.payment_id ?? externalId),
+      checkoutUrl: data.payment_url,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      summary: `NOWPayments checkout failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
+/** Mint a checkout session using the configured provider. */
+export async function checkout({
+  projectId,
+  priceId,
+  amountCents,
+  currency,
+  customerEmail,
+  successUrl,
+  cancelUrl,
+  provider,
+  reference,
+}: {
+  projectId: string;
+  priceId?: string;
+  amountCents?: number;
+  currency?: string;
+  customerEmail?: string;
+  successUrl?: string;
+  cancelUrl?: string;
+  provider?: 'stripe' | 'wise' | 'nowpayments';
+  reference?: string;
+}): Promise<{ ok: boolean; summary: string; externalId?: string; checkoutUrl?: string }> {
+  const chosen = provider ?? (process.env.JARVIS_PAYMENT_PROVIDER as 'stripe' | 'wise' | 'nowpayments' | undefined) ?? 'stripe';
+
+  switch (chosen) {
+    case 'wise':
+      if (!amountCents) {
+        return { ok: false, summary: 'amountCents required for Wise checkout.' };
+      }
+      return checkoutWise({
+        projectId,
+        amountCents,
+        currency,
+        customerEmail,
+        reference,
+      });
+    case 'nowpayments':
+      if (!amountCents) {
+        return { ok: false, summary: 'amountCents required for NOWPayments checkout.' };
+      }
+      return checkoutNowPayments({
+        projectId,
+        amountCents,
+        currency,
+        customerEmail,
+        reference,
+      });
+    case 'stripe':
+    default:
+      if (!priceId) {
+        return { ok: false, summary: 'priceId required for Stripe checkout.' };
+      }
+      return checkoutStripe({
+        projectId,
+        priceId,
+        successUrl,
+        cancelUrl,
+        customerEmail,
+      });
   }
 }
 

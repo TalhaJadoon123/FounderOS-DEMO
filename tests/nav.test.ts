@@ -1,12 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { NAV_OPERATE, NAV_AGENTS, NAV_INTELLIGENCE, NAV_SYSTEM, NAV_LIBRARY, NAV_ORDER, DIGIT_VIEWS } from '@/lib/nav';
+import { NAV_OPERATE, NAV_AGENTS, NAV_INTELLIGENCE, NAV_SYSTEM, NAV_LIBRARY, NAV_JARVIS, NAV_ORDER, DIGIT_VIEWS } from '@/lib/nav';
 
 describe('shared nav config', () => {
   test('NAV_ORDER is the visible order: Operate → Agents → Intelligence → System → Variants', () => {
     expect(NAV_ORDER).toEqual(
-      [...NAV_OPERATE, ...NAV_AGENTS, ...NAV_INTELLIGENCE, ...NAV_SYSTEM, ...NAV_LIBRARY].map((n) => n.href),
+      [...NAV_OPERATE, ...NAV_AGENTS, ...NAV_INTELLIGENCE, ...NAV_SYSTEM, ...NAV_LIBRARY, ...NAV_JARVIS].map(
+        (n) => n.href,
+      ),
     );
   });
 

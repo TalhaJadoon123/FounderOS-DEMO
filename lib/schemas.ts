@@ -890,3 +890,120 @@ export type WorkflowStep = z.infer<typeof WorkflowStepSchema>;
 export type Workflow = z.infer<typeof WorkflowSchema>;
 export type SkillStatus = z.infer<typeof SkillStatusSchema>;
 export type Skill = z.infer<typeof SkillSchema>;
+
+// --- Jarvis: the autonomous delivery + revenue operator ---------------------
+// One project = one thing you sell. Jarvis watches the repo, verifies the live
+// deployment, ships, announces, sells and reports. External side effects are
+// gated by an autonomy policy; every decision is persisted so the operator can
+// always see what ran, what it cost, and what is waiting on them.
+export const JarvisProjectStatusSchema = z.enum(['live', 'building', 'paused', 'draft']);
+export const JarvisAutonomySchema = z.enum(['observe', 'assisted', 'autopilot']);
+export const JarvisHealthSchema = z.enum(['green', 'yellow', 'red', 'unknown']);
+export const JarvisStageSchema = z.enum(['watch', 'verify', 'ship', 'announce', 'sell', 'report']);
+export const JarvisStepStatusSchema = z.enum(['ok', 'skipped', 'needs_approval', 'error']);
+export const JarvisRunStatusSchema = z.enum(['ok', 'needs_you', 'failed', 'paused']);
+export const JarvisRunTriggerSchema = z.enum(['manual', 'schedule', 'webhook']);
+export const JarvisActionKindSchema = z.enum([
+  'deploy',
+  'announce',
+  'checkout',
+  'price_change',
+  'open_project',
+  'open_editor',
+  'read_file',
+  'write_note',
+  'list_folder',
+  'git_status',
+  'disk_space',
+  'run_build',
+]);
+export const JarvisRiskSchema = z.enum(['low', 'medium', 'high']);
+export const JarvisActionStatusSchema = z.enum(['pending', 'approved', 'rejected', 'executed', 'failed']);
+
+export const JarvisProjectSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  /** GitHub `owner/name`; empty until a repo is connected. */
+  repo: z.string().default(''),
+  branch: z.string().min(1).default('main'),
+  /** Public product URL, used for the launch copy and as a health fallback. */
+  deployUrl: z.string().default(''),
+  /** Explicit health endpoint; falls back to `<deployUrl>/api/health`. */
+  healthUrl: z.string().default(''),
+  /** Stripe payment link (or any checkout URL) customers actually pay on. */
+  checkoutUrl: z.string().default(''),
+  /** Stripe price used to mint a payment link when checkoutUrl is empty. */
+  stripePriceId: z.string().default(''),
+  /** Env var that holds this project's deploy hook (a secret, never stored). */
+  deployHookEnv: z.string().regex(/^[A-Z][A-Z0-9_]*$/).default('VERCEL_DEPLOY_HOOK_URL'),
+  /** Absolute local checkout used by the real verify stage (build/tests). */
+  localPath: z.string().default(''),
+  /** Package script or git command the verify stage actually runs. */
+  verifyCommand: z.string().default(''),
+  priceCents: z.number().int().nonnegative().default(0),
+  currency: z.string().length(3).default('USD'),
+  status: JarvisProjectStatusSchema.default('draft'),
+  autonomy: JarvisAutonomySchema.default('assisted'),
+  health: JarvisHealthSchema.default('unknown'),
+  createdAt: z.string().min(1),
+  updatedAt: z.string().min(1),
+  lastRunAt: z.string().nullable().default(null),
+});
+export type JarvisProject = z.infer<typeof JarvisProjectSchema>;
+export type JarvisAutonomy = z.infer<typeof JarvisAutonomySchema>;
+export type JarvisHealth = z.infer<typeof JarvisHealthSchema>;
+export type JarvisStage = z.infer<typeof JarvisStageSchema>;
+
+export const JarvisRunSchema = z.object({
+  id: z.string().min(1),
+  projectId: z.string().min(1),
+  trigger: JarvisRunTriggerSchema,
+  status: JarvisRunStatusSchema,
+  startedAt: z.string().min(1),
+  finishedAt: z.string().nullable().default(null),
+  summary: z.string().default(''),
+});
+export type JarvisRun = z.infer<typeof JarvisRunSchema>;
+export type JarvisRunStatus = z.infer<typeof JarvisRunSchema>['status'];
+
+export const JarvisStepSchema = z.object({
+  id: z.string().min(1),
+  runId: z.string().min(1),
+  projectId: z.string().min(1),
+  stage: JarvisStageSchema,
+  seq: z.number().int().nonnegative(),
+  status: JarvisStepStatusSchema,
+  detail: z.string().default(''),
+  startedAt: z.string().min(1),
+  finishedAt: z.string().min(1),
+});
+export type JarvisStep = z.infer<typeof JarvisStepSchema>;
+
+export const JarvisActionSchema = z.object({
+  id: z.string().min(1),
+  projectId: z.string().min(1),
+  runId: z.string().nullable().default(null),
+  kind: JarvisActionKindSchema,
+  title: z.string().min(1),
+  risk: JarvisRiskSchema,
+  status: JarvisActionStatusSchema,
+  payload: z.record(z.unknown()).default({}),
+  createdAt: z.string().min(1),
+  decidedAt: z.string().nullable().default(null),
+});
+export type JarvisAction = z.infer<typeof JarvisActionSchema>;
+export type JarvisActionKind = z.infer<typeof JarvisActionKindSchema>;
+export type JarvisActionStatus = z.infer<typeof JarvisActionStatusSchema>;
+
+export const JarvisRevenueSchema = z.object({
+  id: z.string().min(1),
+  projectId: z.string().min(1),
+  source: z.string().min(1),
+  externalId: z.string().min(1),
+  customer: z.string().default(''),
+  amountCents: z.number().int(),
+  currency: z.string().length(3).default('USD'),
+  status: z.string().default('paid'),
+  occurredAt: z.string().min(1),
+});
+export type JarvisRevenue = z.infer<typeof JarvisRevenueSchema>;

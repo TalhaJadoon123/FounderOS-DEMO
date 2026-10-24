@@ -1,7 +1,21 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
+// The systems page probes every provider on render. That is correct in
+// production but would make this render-only net hit the network 30 times, so
+// the page is exercised against a deterministic empty board here.
+vi.mock('@/lib/jarvis/systems', () => ({
+  listSystems: async () => ({
+    systems: [],
+    counts: { total: 0, connected: 0, notConfigured: 0, error: 0, selfServiceConnected: 0 },
+    lastProbeAt: null,
+    newlyConnected: [],
+    lost: [],
+    needsKeys: [],
+  }),
+}));
 
 // Pages read the DB path at first access, so point it at a fresh seeded temp DB
 // before any page module is imported. FUNNEL_PROVIDER keeps /funnel off the
@@ -48,6 +62,9 @@ const PAGES: PageEntry[] = [
   { file: 'analytics/page.tsx', load: () => import('@/app/analytics/page') },
   { file: 'reference/page.tsx', load: () => import('@/app/reference/page') },
   { file: 'personas/page.tsx', load: () => import('@/app/personas/page') },
+  { file: 'jarvis/page.tsx', load: () => import('@/app/jarvis/page') },
+  { file: 'jarvis/settings/page.tsx', load: () => import('@/app/jarvis/settings/page'), props: { searchParams: {} } },
+  { file: 'jarvis/systems/page.tsx', load: () => import('@/app/jarvis/systems/page') },
 ];
 
 function discoverPages(dir: string, base = ''): string[] {

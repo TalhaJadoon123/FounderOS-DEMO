@@ -10,6 +10,10 @@
    every var(--ease) animation on the others. */
 :root {
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* Bundled locally instead of next/font/google so an offline or air-gapped
+     Docker build never fails fetching fonts.googleapis.com. If JetBrains Mono
+     is installed it wins; otherwise the native monospace stack takes over. */
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ── Palette aliases ──────────────────────────────────────────────────────

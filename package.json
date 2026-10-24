@@ -17,7 +17,10 @@
     "brain:docs": "tsx scripts/generate-brain-docs.ts",
     "desktop": "npm --prefix desktop start",
     "desktop:dev": "npm --prefix desktop run dev",
-    "desktop:install": "npm --prefix desktop install"
+    "desktop:install": "npm --prefix desktop install",
+    "postinstall": "node scripts/postinstall.mjs",
+    "doctor": "tsx scripts/doctor.mjs",
+    "validate:env": "tsx scripts/validate-env.ts"
   },
   "dependencies": {
     "@notionhq/client": "^5.22.0",

@@ -1,46 +1,75 @@
 import { GATED, connected as gatedConnected } from '@/lib/connectors/demo-status';
 import fs from 'node:fs';
-import path from 'node:path';
+import { delimiter, join } from 'node:path';
 import type { ConnectorStatus } from '@/lib/connectors/types';
 
 /**
- * One connector for the local machine stack: running services (ports) and
- * installed daily-driver CLIs. Everything here is checked live.
+ * One connector for the local machine stack: running services and installed
+ * daily-driver CLIs. Everything here is checked live.
+ *
+ * "Connected" means the whole declared stack is present. A partial stack is
+ * reported as not_configured with the exact up/down split — 1 of 7 services
+ * must never paint the row green.
  */
 
 type Check = { name: string; up: boolean; detail: string };
 
 function ping(url: string, timeoutMs = 1500): Promise<boolean> {
   return fetch(url, { signal: AbortSignal.timeout(timeoutMs) }).then(
-    (r) => r.status > 0,
+    (r) => r.status > 0 && r.status < 500,
     () => false,
   );
 }
 
-function binExists(...candidates: string[]): string | null {
+/**
+ * Resolve a binary by absolute path or by name on PATH. The old version only
+ * looked in macOS Homebrew locations, so a Windows or Docker host reported
+ * every CLI as missing even when it was installed.
+ */
+function binExists(...candidates: Array<string | null | undefined>): string | null {
+  const exts =
+    process.platform === 'win32'
+      ? (process.env.PATHEXT ?? '.EXE;.CMD;.BAT;.COM').split(';').filter(Boolean)
+      : [''];
+  const dirs = (process.env.PATH ?? '').split(delimiter).filter(Boolean);
+  const mode = process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK;
+
   for (const candidate of candidates) {
-    try {
-      fs.accessSync(candidate, fs.constants.X_OK);
-      return candidate;
-    } catch {
-      /* next */
+    if (!candidate) continue;
+    const explicit = candidate.includes('/') || candidate.includes('\\');
+    const paths = explicit
+      ? [candidate]
+      : dirs.flatMap((dir) => [join(dir, candidate), ...exts.map((ext) => join(dir, candidate + ext))]);
+    for (const file of paths) {
+      try {
+        fs.accessSync(file, mode);
+        return file;
+      } catch {
+        /* next */
+      }
     }
   }
   return null;
 }
 
-const BREW = '/opt/homebrew/bin';
-
 /**
- * Both agent services run on the host, so a bare localhost probe reports them
- * down from anywhere else, including the laptop, where the OS is also
- * opened. Use the configured address when there is one (PAPERCLIP_API_URL is
- * already set for the board connector) and fall back to the loopback ports the
- * host itself serves on.
+ * The conventional local ports. They are documentation, not auto-detection:
+ * another app can be listening on 3100 (it happened), so a service only counts
+ * when the operator has explicitly pointed at it with the env var.
  */
-const paperclipUrl = (): string => process.env.PAPERCLIP_API_URL || 'http://localhost:3100';
-const hermesUrl = (): string => process.env.HERMES_GATEWAY_URL || 'http://localhost:8642';
-const gbrainBin = (): string => process.env.GBRAIN_BIN || '';
+const DEFAULT_PAPERCLIP_URL = 'http://localhost:3100';
+const DEFAULT_HERMES_URL = 'http://localhost:8642';
+
+const clean = (url: string | undefined): string | null => (url ? url.replace(/\/$/, '') : null);
+const paperclipUrl = (): string | null => clean(process.env.PAPERCLIP_API_URL);
+const hermesUrl = (): string | null => clean(process.env.HERMES_GATEWAY_URL);
+
+/** A configured service is up if either its health route or its root answers. */
+async function serviceUp(base: string | null): Promise<boolean> {
+  if (!base) return false;
+  if (await ping(`${base}/health`)) return true;
+  return ping(base);
+}
 
 export async function localStackStatus(): Promise<ConnectorStatus> {
   if (GATED) return gatedConnected('local-stack', 'Local Stack', 'local', 'services up');
@@ -49,36 +78,31 @@ export async function localStackStatus(): Promise<ConnectorStatus> {
   // to. Anything reached through a hosted API instead of a local process was
   // dropped from this panel: reporting on it made the panel look broken
   // while conveying nothing about the OS's actual local dependencies.
-  // No self-check: if you are reading this panel the OS is obviously up, and
-  // an SSR request to our own port reported DOWN on the host while serving the
-  // very page it appears on. A check that can only be true-or-wrong is worse
-  // than no check. Everything below is a real external dependency.
-  const [paperclipBoard, hermesGateway] = await Promise.all([ping(paperclipUrl()), ping(hermesUrl())]);
+  // No self-check: if you are reading this panel the OS is obviously up.
+  const pUrl = paperclipUrl();
+  const hUrl = hermesUrl();
+  const [paperclipBoard, hermesGateway] = await Promise.all([serviceUp(pUrl), serviceUp(hUrl)]);
 
   const checks: Check[] = [
-    { name: 'paperclip', up: paperclipBoard, detail: `agent board · ${paperclipUrl().replace(/^https?:\/\//, '')}` },
-    { name: 'hermes', up: hermesGateway, detail: `worker pool · ${hermesUrl().replace(/^https?:\/\//, '')}` },
     {
-      name: 'gbrain',
-      up: Boolean(binExists(gbrainBin(), `${BREW}/gbrain`)),
-      detail: 'knowledge CLI behind /brain',
+      name: 'paperclip',
+      up: paperclipBoard,
+      detail: pUrl
+        ? `agent board · ${pUrl.replace(/^https?:\/\//, '')}`
+        : `PAPERCLIP_API_URL not set (default ${DEFAULT_PAPERCLIP_URL.replace(/^https?:\/\//, '')})`,
     },
     {
-      name: 'ffmpeg',
-      up: Boolean(binExists(`${BREW}/ffmpeg`, '/usr/local/bin/ffmpeg')),
-      detail: 'content-gen media processing',
+      name: 'hermes',
+      up: hermesGateway,
+      detail: hUrl
+        ? `worker pool · ${hUrl.replace(/^https?:\/\//, '')}`
+        : `HERMES_GATEWAY_URL not set (default ${DEFAULT_HERMES_URL.replace(/^https?:\/\//, '')})`,
     },
-    {
-      name: 'pdftotext',
-      up: Boolean(binExists(`${BREW}/pdftotext`, '/usr/local/bin/pdftotext')),
-      detail: 'statement ingestion (/finances)',
-    },
-    {
-      name: 'whisper',
-      up: Boolean(binExists(`${BREW}/whisper-cli`, '/usr/local/bin/whisper-cli')),
-      detail: 'local transcription',
-    },
-    { name: 'gh', up: Boolean(binExists(`${BREW}/gh`, '/usr/local/bin/gh')), detail: 'GitHub CLI · deploys' },
+    { name: 'gbrain', up: Boolean(binExists(process.env.GBRAIN_BIN, 'gbrain')), detail: 'knowledge CLI behind /brain' },
+    { name: 'ffmpeg', up: Boolean(binExists('ffmpeg')), detail: 'content-gen media processing' },
+    { name: 'pdftotext', up: Boolean(binExists('pdftotext')), detail: 'statement ingestion (/finances)' },
+    { name: 'whisper', up: Boolean(binExists('whisper-cli', 'whisper')), detail: 'local transcription' },
+    { name: 'gh', up: Boolean(binExists('gh')), detail: 'GitHub CLI · deploys' },
   ];
 
   const up = checks.filter((c) => c.up);
@@ -90,10 +114,11 @@ export async function localStackStatus(): Promise<ConnectorStatus> {
     id: 'local-stack',
     name: 'Local Stack',
     kind: 'local',
-    state: up.length > 0 ? 'connected' : 'error',
-    detail: `${up.length}/${checks.length} up — ${up.map((c) => c.name).join(', ')}${
-      downNames.length ? ` · down: ${downNames.join(', ')}` : ''
-    }`,
+    // Full stack only. A partial install is a setup task, not a green light.
+    state: up.length === checks.length ? 'connected' : 'not_configured',
+    detail: `${up.length}/${checks.length} up${
+      up.length ? ` — ${up.map((c) => c.name).join(', ')}` : ''
+    }${downNames.length ? ` · down: ${downNames.join(', ')}` : ''}`,
     meta,
   };
 }

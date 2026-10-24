@@ -31,13 +31,18 @@ export function robinhoodStatus(
 ): ConnectorStatus {
   if (GATED) return gatedConnected('robinhood', 'Robinhood', 'payments', 'agentic trading account · live');
   const base = { id: 'robinhood', name: 'Robinhood', kind: 'payments' } as const;
-  const accounts = fed === null ? [] : Array.isArray(fed) ? fed : [fed];
+  const raw = fed === null ? [] : Array.isArray(fed) ? fed : [fed];
+  // Seed rows exist so /trading has a shape on a fresh clone. They are not a
+  // live account and must never make this connector green.
+  const accounts = raw.filter((a) => a.source !== 'seed');
   if (accounts.length === 0) {
     return {
       ...base,
       state: 'not_configured',
       detail:
-        'Robinhood not feeding the OS yet. Authenticate the Robinhood Trading MCP in an agent runtime, then push a snapshot to POST /api/trading/snapshot.',
+        raw.length > 0
+          ? 'Only seeded demo snapshots exist. Authenticate the Robinhood Trading MCP in an agent runtime, then push a real snapshot to POST /api/trading/snapshot.'
+          : 'Robinhood not feeding the OS yet. Authenticate the Robinhood Trading MCP in an agent runtime, then push a snapshot to POST /api/trading/snapshot.',
     };
   }
   const sum = (pick: (s: TradingAccountSnapshot) => number) =>

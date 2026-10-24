@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------
+# Founder OS — docker-compose.dev.yml
+#
+# Development overlay: mounts source for live edits, skips the
+# production build. Use with the main compose file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# ---------------------------------------------------------------
+
+services:
+  founder-os:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    command: ["npx", "next", "dev", "-p", "4100", "-H", "0.0.0.0"]
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - NODE_ENV=development
+      - PORT=4100
+      - NEXT_DIST_DIR=.next
+      - WATCHPACK_POLLING=true
+    ports:
+      - "4100:4100"

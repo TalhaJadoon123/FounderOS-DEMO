@@ -52,6 +52,7 @@ MT5_BRIDGE_HOST = "127.0.0.1"
 MT5_BRIDGE_PORT = 5555
 JARVIS_SNAPSHOT_URL = "http://localhost:4100/api/trading/snapshot"
 JARVIS_WEBHOOK_URL = "http://localhost:4100/api/jarvis/funding/webhook"
+JARVIS_INGEST_TOKEN = None  # set JARVIS_LOCAL_INGEST_TOKEN env to enable auth
 POLL_SECONDS = 30
 ACCOUNT_ID = "mt5-demo-1"
 ACCOUNT_LABEL = "MT5 Demo Account"
@@ -119,10 +120,13 @@ class Mt5BridgeClient:
 def jarvis_post(url: str, payload: dict) -> tuple[bool, str]:
     """POST JSON to a Jarvis endpoint. Returns (ok, detail)."""
     data = json.dumps(payload).encode("utf-8")
+    headers = {"Content-Type": "application/json"}
+    if JARVIS_INGEST_TOKEN:
+        headers["Authorization"] = f"Bearer {JARVIS_INGEST_TOKEN}"
     req = urllib.request.Request(
         url,
         data=data,
-        headers={"Content-Type": "application/json"},
+        headers=headers,
         method="POST",
     )
     try:
@@ -201,10 +205,15 @@ def build_snapshot() -> dict | None:
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # Read token from env at runtime (not import time, so `export` works).
+    global JARVIS_INGEST_TOKEN
+    JARVIS_INGEST_TOKEN = __import__("os").environ.get("JARVIS_LOCAL_INGEST_TOKEN")
+
     print("[adapter] Jarvis MT5 adapter starting")
     print(f"[adapter] MT5 bridge: {MT5_BRIDGE_HOST}:{MT5_BRIDGE_PORT}")
     print(f"[adapter] Jarvis snapshot: {JARVIS_SNAPSHOT_URL}")
     print(f"[adapter] Jarvis webhook: {JARVIS_WEBHOOK_URL}")
+    print(f"[adapter] Ingest auth: {'on' if JARVIS_INGEST_TOKEN else 'off (dev only)'}")
     print(f"[adapter] Poll interval: {POLL_SECONDS}s")
     print(f"[adapter] Ctrl+C to stop")
 

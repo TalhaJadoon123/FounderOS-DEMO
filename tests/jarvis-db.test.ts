@@ -123,6 +123,8 @@ describe('jarvis tables', () => {
       externalId: 'ch_123',
       customer: 'alex@example.com',
       amountCents: 4900,
+      feeCents: 0,
+      netCents: 4900,
       currency: 'USD',
       status: 'paid',
       occurredAt: now,

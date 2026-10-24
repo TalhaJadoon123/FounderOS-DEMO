@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getDb } from '@/lib/data';
 import { TradingAccountSnapshotSchema, TradingPositionSchema } from '@/lib/schemas';
+import { requireIngestAuth } from '@/lib/jarvis/auth';
 
 export const dynamic = 'force-dynamic';
 
 /** Agent-fed ingest: the trading agent pushes the current account snapshot plus
- *  its positions here behind the application auth boundary. Positions are
+ *  its positions here behind the ingest auth boundary. Positions are
  *  capped so one payload can't balloon the DB. */
 const BodySchema = z.object({
   snapshot: TradingAccountSnapshotSchema,
@@ -14,6 +15,9 @@ const BodySchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const auth = requireIngestAuth(req.headers);
+  if (auth) return auth;
+
   let body: unknown;
   try {
     body = await req.json();

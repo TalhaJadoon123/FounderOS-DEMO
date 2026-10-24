@@ -1002,6 +1002,8 @@ export const JarvisRevenueSchema = z.object({
   externalId: z.string().min(1),
   customer: z.string().default(''),
   amountCents: z.number().int(),
+  feeCents: z.number().int().default(0),
+  netCents: z.number().int().default(0),
   currency: z.string().length(3).default('USD'),
   status: z.string().default('paid'),
   occurredAt: z.string().min(1),

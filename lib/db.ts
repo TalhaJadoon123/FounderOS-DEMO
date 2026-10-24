@@ -576,6 +576,8 @@ CREATE TABLE IF NOT EXISTS jarvis_revenue (
   external_id TEXT NOT NULL UNIQUE,
   customer TEXT NOT NULL DEFAULT '',
   amount_cents INTEGER NOT NULL,
+  fee_cents INTEGER NOT NULL DEFAULT 0,
+  net_cents INTEGER NOT NULL DEFAULT 0,
   currency TEXT NOT NULL DEFAULT 'USD',
   status TEXT NOT NULL DEFAULT 'paid',
   occurred_at TEXT NOT NULL
@@ -705,6 +707,21 @@ function migrateJarvisTables(db: InstanceType<typeof Database>): void {
   if (!autonomy) {
     db.prepare("INSERT INTO jarvis_settings (key, value) VALUES ('autopilot', 'assisted')").run();
   }
+
+  // Revenue fee/net columns (added so the ledger can show real take-home).
+  const revColumns = new Set(
+    (db.prepare('PRAGMA table_info(jarvis_revenue)').all() as { name: string }[]).map((c) => c.name),
+  );
+  if (revColumns.size > 0 && !revColumns.has('fee_cents')) {
+    db.exec("ALTER TABLE jarvis_revenue ADD COLUMN fee_cents INTEGER NOT NULL DEFAULT 0");
+  }
+  if (revColumns.size > 0 && !revColumns.has('net_cents')) {
+    db.exec("ALTER TABLE jarvis_revenue ADD COLUMN net_cents INTEGER NOT NULL DEFAULT 0");
+  }
+  // Backfill net_cents for any rows inserted before the column existed.
+  db.exec(
+    "UPDATE jarvis_revenue SET net_cents = amount_cents - fee_cents WHERE net_cents = 0",
+  );
 }
 
 // agent_runs gained LLM cost columns after first ship: the model used and the
@@ -2390,8 +2407,81 @@ export function openDb(path: string) {
         insert(r: JarvisRevenue): void {
           JarvisRevenueSchema.parse(r);
           db.prepare(
-            'INSERT OR REPLACE INTO jarvis_revenue (id, project_id, source, external_id, customer, amount_cents, currency, status, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          ).run(r.id, r.projectId, r.source, r.externalId, r.customer, r.amountCents, r.currency, r.status, r.occurredAt);
+            'INSERT OR REPLACE INTO jarvis_revenue (id, project_id, source, external_id, customer, amount_cents, fee_cents, net_cents, currency, status, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(
+            r.id,
+            r.projectId,
+            r.source,
+            r.externalId,
+            r.customer,
+            r.amountCents,
+            r.feeCents ?? 0,
+            r.netCents ?? r.amountCents - (r.feeCents ?? 0),
+            r.currency,
+            r.status,
+            r.occurredAt,
+          );
+        },
+        insertIdempotent(r: JarvisRevenue): JarvisRevenue | null {
+          JarvisRevenueSchema.parse(r);
+          // external_id is UNIQUE; if a row already exists for this source+external
+          // id, return it instead of overwriting (idempotent writes).
+          const existing = db
+            .prepare(
+              'SELECT id FROM jarvis_revenue WHERE source = ? AND external_id = ?',
+            )
+            .get(r.source, r.externalId) as { id: string } | undefined;
+          if (existing) return null;
+          db.prepare(
+            'INSERT INTO jarvis_revenue (id, project_id, source, external_id, customer, amount_cents, fee_cents, net_cents, currency, status, occurred_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          ).run(
+            r.id,
+            r.projectId,
+            r.source,
+            r.externalId,
+            r.customer,
+            r.amountCents,
+            r.feeCents ?? 0,
+            r.netCents ?? r.amountCents - (r.feeCents ?? 0),
+            r.currency,
+            r.status,
+            r.occurredAt,
+          );
+          return r;
+        },
+        getBySourceExternal(source: string, externalId: string): JarvisRevenue | null {
+          const row = db
+            .prepare(
+              'SELECT * FROM jarvis_revenue WHERE source = ? AND external_id = ?',
+            )
+            .get(source, externalId) as any | undefined;
+          if (!row) return null;
+          return JarvisRevenueSchema.parse({
+            id: row.id,
+            projectId: row.project_id,
+            source: row.source,
+            externalId: row.external_id,
+            customer: row.customer,
+            amountCents: row.amount_cents,
+            feeCents: row.fee_cents,
+            netCents: row.net_cents,
+            currency: row.currency,
+            status: row.status,
+            occurredAt: row.occurred_at,
+          });
+        },
+        balanceCents(projectId: string): { gross: number; fees: number; net: number; count: number } {
+          const row = db
+            .prepare(
+              `SELECT
+                 COALESCE(SUM(amount_cents), 0) AS gross,
+                 COALESCE(SUM(fee_cents), 0) AS fees,
+                 COALESCE(SUM(net_cents), 0) AS net,
+                 COUNT(*) AS count
+               FROM jarvis_revenue WHERE project_id = ?`,
+            )
+            .get(projectId) as { gross: number; fees: number; net: number; count: number };
+          return row;
         },
         byProject(projectId: string): JarvisRevenue[] {
           return (
@@ -2408,6 +2498,8 @@ export function openDb(path: string) {
               externalId: r.external_id,
               customer: r.customer,
               amountCents: r.amount_cents,
+              feeCents: r.fee_cents,
+              netCents: r.net_cents,
               currency: r.currency,
               status: r.status,
               occurredAt: r.occurred_at,
@@ -2425,6 +2517,8 @@ export function openDb(path: string) {
               externalId: r.external_id,
               customer: r.customer,
               amountCents: r.amount_cents,
+              feeCents: r.fee_cents,
+              netCents: r.net_cents,
               currency: r.currency,
               status: r.status,
               occurredAt: r.occurred_at,

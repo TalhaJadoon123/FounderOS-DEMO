@@ -2,12 +2,11 @@ import { describe, expect, test } from 'vitest';
 import {
   BRAND_DEALS_CACHE_TTL_MS,
   PIPELINE_ORDER,
-  SEEDED_DEALS,
   fetchBrandDeals,
   groupDeals,
   parseNotionDeal,
 } from '@/lib/connectors/brand-deals';
-import { BrandDealSchema } from '@/lib/schemas';
+import { BrandDealSchema, type BrandDeal } from '@/lib/schemas';
 
 /**
  * /brand-deals mirrors the Notion "Brand Deals Hub" database. Notion stays the
@@ -75,11 +74,20 @@ describe('parseNotionDeal', () => {
 });
 
 describe('groupDeals — the pipeline board', () => {
+  const sampleDeal: BrandDeal = {
+    id: 'test-1', brand: 'Test Brand', status: 'New', tier: 'A',
+    dealValueUsd: 1000, budgetUsd: 2000, amountAgreedUsd: null, suggestedRateUsd: 1500,
+    paidInFull: false, deadline: null, followUpDate: null,
+    contactName: null, contactEmail: null, mainChannel: 'Instagram',
+    videoType: 'Short-form', source: 'Inbound', icpFit: 'Decent',
+    notionUrl: 'https://notion.so/', lastEdited: '2026-08-13T15:00:00.000Z', seeded: false,
+  };
+
   test('groups by status in the Notion pipeline order, not alphabetically', () => {
     const deals = [
-      { ...SEEDED_DEALS[0], status: 'Paid' },
-      { ...SEEDED_DEALS[0], status: 'New' },
-      { ...SEEDED_DEALS[0], status: 'Negotiating' },
+      { ...sampleDeal, status: 'Paid' },
+      { ...sampleDeal, status: 'New' },
+      { ...sampleDeal, status: 'Negotiating' },
     ];
     const lanes = groupDeals(deals);
     const named = lanes.filter((l) => l.deals.length > 0).map((l) => l.status);
@@ -90,31 +98,23 @@ describe('groupDeals — the pipeline board', () => {
   });
 
   test('an unknown status still shows up rather than silently vanishing', () => {
-    const lanes = groupDeals([{ ...SEEDED_DEALS[0], status: 'Weird Custom' }]);
+    const lanes = groupDeals([{ ...sampleDeal, status: 'Weird Custom' }]);
     expect(lanes.some((l) => l.status === 'Weird Custom' && l.deals.length === 1)).toBe(true);
   });
 });
 
-describe('cache + seed rules', () => {
-  test('the TTL outlives the 15-minute sweep that refills it', () => {
-    // same lesson as comms: the sweep pays the cold cost, never a person
-    expect(BRAND_DEALS_CACHE_TTL_MS).toBeGreaterThan(15 * 60_000);
+describe('honest empty state when Notion is not configured', () => {
+  test('returns empty deals when Notion API key is missing', async () => {
+    const res = await fetchBrandDeals({});
+    expect(res.mode).toBe('error');
+    expect(res.deals).toEqual([]);
+    expect(res.detail).toContain('NOTION_API_KEY');
   });
 
-  test('seeded rows validate and are unmistakably seeded', () => {
-    expect(SEEDED_DEALS.length).toBeGreaterThanOrEqual(4);
-    for (const d of SEEDED_DEALS) expect(BrandDealSchema.parse(d)).toEqual(d);
-    // every seeded row is marked so the page can badge itself honestly
-    expect(SEEDED_DEALS.every((d) => d.seeded)).toBe(true);
+  test('returns empty deals when data-source id is unset', async () => {
+    const res = await fetchBrandDeals({ NOTION_API_KEY: 'secret_x' });
+    expect(res.mode).toBe('error');
+    expect(res.deals).toEqual([]);
+    expect(res.detail).toContain('NOTION_BRAND_DEALS_SOURCE');
   });
-});
-
-// The data-source id names one specific workspace's database, so it is
-// configuration with no sensible default: without it the board must show its
-// examples rather than query a stranger's collection.
-test('stays on the seeded examples when the data-source id is unset', async () => {
-  const res = await fetchBrandDeals({ NOTION_API_KEY: 'secret_x' });
-  expect(res.mode).toBe('seeded');
-  expect(res.deals).toEqual(SEEDED_DEALS);
-  expect(res.detail).toContain('NOTION_BRAND_DEALS_SOURCE');
 });

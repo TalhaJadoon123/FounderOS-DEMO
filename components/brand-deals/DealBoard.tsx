@@ -232,8 +232,6 @@ export function DealBoard({ initial }: { initial: BrandDealsResult }) {
           <div className="flex items-center gap-2.5">
             {mode === 'live' ? (
               <Badge tone="ok">live · Notion</Badge>
-            ) : mode === 'seeded' ? (
-              <Badge tone="warn">seeded · connect Notion</Badge>
             ) : (
               <Badge tone="err">Notion error</Badge>
             )}

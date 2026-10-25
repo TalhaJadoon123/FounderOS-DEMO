@@ -103,47 +103,10 @@ export function groupDeals(deals: BrandDeal[]): PipelineLane[] {
   return lanes;
 }
 
-/** Placeholder rows so the tab reads as a real board before the key lands.
- *  Marked seeded so the page badges itself honestly, trading-page style. */
-export const SEEDED_DEALS: BrandDeal[] = [
-  {
-    id: 'seed-1', brand: 'Notion (example)', status: 'Negotiating', tier: 'S',
-    dealValueUsd: 6000, budgetUsd: 8000, amountAgreedUsd: null, suggestedRateUsd: 6500,
-    paidInFull: false, deadline: '2026-09-05', followUpDate: '2026-08-20',
-    contactName: 'Sam Rivera', contactEmail: 'sam@example.com', mainChannel: 'Instagram',
-    videoType: 'Integration', source: 'Inbound', icpFit: 'Strong',
-    notionUrl: 'https://www.notion.so/', lastEdited: '2026-08-13T15:00:00.000Z', seeded: true,
-  },
-  {
-    id: 'seed-2', brand: 'Framer (example)', status: 'New', tier: 'A',
-    dealValueUsd: null, budgetUsd: null, amountAgreedUsd: null, suggestedRateUsd: 4000,
-    paidInFull: false, deadline: null, followUpDate: '2026-08-18',
-    contactName: null, contactEmail: null, mainChannel: 'TikTok',
-    videoType: 'Short-form', source: 'Outbound', icpFit: 'Decent',
-    notionUrl: 'https://www.notion.so/', lastEdited: '2026-08-12T10:00:00.000Z', seeded: true,
-  },
-  {
-    id: 'seed-3', brand: 'Shopify (example)', status: 'Filming', tier: 'S',
-    dealValueUsd: 9000, budgetUsd: 9000, amountAgreedUsd: 9000, suggestedRateUsd: 8500,
-    paidInFull: false, deadline: '2026-08-28', followUpDate: null,
-    contactName: 'Dana K', contactEmail: 'dana@example.com', mainChannel: 'YouTube',
-    videoType: 'Dedicated', source: 'Agency', icpFit: 'Strong',
-    notionUrl: 'https://www.notion.so/', lastEdited: '2026-08-11T09:00:00.000Z', seeded: true,
-  },
-  {
-    id: 'seed-4', brand: 'Riverside (example)', status: 'Paid', tier: 'B',
-    dealValueUsd: 2500, budgetUsd: 2500, amountAgreedUsd: 2500, suggestedRateUsd: 2500,
-    paidInFull: true, deadline: null, followUpDate: null,
-    contactName: null, contactEmail: null, mainChannel: 'Podcast',
-    videoType: 'Mention', source: 'Referral', icpFit: 'Decent',
-    notionUrl: 'https://www.notion.so/', lastEdited: '2026-07-30T16:00:00.000Z', seeded: true,
-  },
-];
-
 export type BrandDealsResult = {
   deals: BrandDeal[];
-  /** 'live' from Notion, 'seeded' placeholders, 'error' key set but fetch failed. */
-  mode: 'live' | 'seeded' | 'error';
+  /** 'live' from Notion, 'error' key set but fetch failed. No seeded mode. */
+  mode: 'live' | 'error';
   detail: string;
   /** epoch ms of the read the deals came from; null when nothing synced. */
   syncedAt: number | null;
@@ -155,18 +118,18 @@ export async function fetchBrandDeals(
   const key = env.NOTION_API_KEY;
   if (!key) {
     return {
-      deals: SEEDED_DEALS,
-      mode: 'seeded',
-      detail: 'Showing examples. Plant NOTION_API_KEY (internal integration secret, shared with Brand Deals Hub) to go live.',
+      deals: [],
+      mode: 'error',
+      detail: 'NOTION_API_KEY not set. Add internal integration secret (shared with Brand Deals Hub) to .env.local.',
       syncedAt: null,
     };
   }
   const source = dataSourceId(env);
   if (!source) {
     return {
-      deals: SEEDED_DEALS,
-      mode: 'seeded',
-      detail: 'Showing examples. Plant NOTION_BRAND_DEALS_SOURCE (the Brand Deals Hub data-source id) to go live.',
+      deals: [],
+      mode: 'error',
+      detail: 'NOTION_BRAND_DEALS_SOURCE not set. Add the Brand Deals Hub data-source id to .env.local.',
       syncedAt: null,
     };
   }

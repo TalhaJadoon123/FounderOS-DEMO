@@ -7,10 +7,11 @@ import { seedDatabase } from '@/lib/seed';
 
 /**
  * The agent-ingest routes accept a pushed snapshot / trade and the read route
- * reflects them; the seed leaves /trading alive out of the box.
+ * reflects them. With no seed data, trading tables start EMPTY — the first
+ * real push (source 'robinhood' or 'loopader') populates them.
  */
 
-describe('seedDatabase seeds the trading account', () => {
+describe('seedDatabase leaves trading tables EMPTY (no demo data)', () => {
   let db: FounderDb;
   beforeAll(() => {
     db = openDb(':memory:');
@@ -18,12 +19,12 @@ describe('seedDatabase seeds the trading account', () => {
   });
   afterAll(() => db.close());
 
-  test('a snapshot, positions, and activity are present', () => {
+  test('no snapshot, no positions, no activity — all empty', () => {
     const snap = db.trading.latestSnapshot();
-    expect(snap).not.toBeNull();
-    expect(snap!.accountValueUsd).toBeGreaterThan(0);
-    expect(db.trading.positions().length).toBeGreaterThan(0);
-    expect(db.trading.activity().length).toBeGreaterThan(0);
+    expect(snap).toBeNull();
+    expect(db.trading.positions()).toHaveLength(0);
+    expect(db.trading.activity()).toHaveLength(0);
+    expect(db.trading.history('agentic')).toHaveLength(0);
   });
 });
 
@@ -76,8 +77,6 @@ describe('trading ingest + read routes', () => {
     };
     expect(body.snapshot?.accountValueUsd).toBe(12000);
     expect(body.snapshot?.source).toBe('robinhood');
-    // The pushed snapshot supersedes the seeded individual positions; the
-    // seeded agentic sleeve keeps its own and is unaffected by this push.
     expect(body.positions.filter((p) => p.accountId === 'individual')).toHaveLength(1);
     expect(body.status.state).toBe('connected');
   });
@@ -101,12 +100,12 @@ describe('trading ingest + read routes', () => {
       history: Record<string, { accountValueUsd: number }[]>;
     };
 
-    expect(body.accounts.map((a) => a.accountId)).toEqual(['individual', 'agentic']);
+    // Both 'individual' (from first test) and 'agentic' exist in the shared test DB
+    expect(body.accounts.map((a) => a.accountId).sort()).toEqual(['agentic', 'individual']);
     expect(body.accounts.find((a) => a.accountId === 'agentic')?.accountValueUsd).toBe(612);
     // Oldest-first, with the two just-pushed points closing out the series.
     const series = body.history.agentic.map((p) => p.accountValueUsd);
     expect(series.slice(-2)).toEqual([600, 612]);
-    expect(body.history.individual.length).toBeGreaterThan(0);
   });
 
   test('POST /api/trading/activity logs a trade; a bad action is rejected', async () => {
@@ -207,9 +206,11 @@ describe('trading limits route', () => {
     expect(body.clamped).toContain('maxDeployedCapitalUsd');
     expect((await (await get()).json()).limits.maxDeployedCapitalUsd).toBe(600);
   });
-  test('the first real snapshot evicts the seeded rows and says so', async () => {
+
+  test('the first real snapshot evicts any seed rows and says so', async () => {
     const { getDb } = await import('@/lib/data');
     const db = getDb();
+    // Manually insert a seed row to test eviction
     db.trading.recordSnapshot(
       { capturedAt: '2026-08-13T11:00:00.000Z', accountId: 'agentic', accountLabel: 'Agentic', accountValueUsd: 1000, buyingPowerUsd: 1000, cashUsd: 1000, dayPnlUsd: 0, totalPnlUsd: 0, source: 'seed' },
       [],

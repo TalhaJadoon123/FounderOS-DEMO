@@ -153,8 +153,8 @@ describe('the seed guard back-fills proposals', () => {
  * the repo protects `origin: 'os'` rows, and cheap because there are a handful.
  */
 describe('syncSeededProposals', () => {
-  test('a seeded row that left the seed leaves the database with it', async () => {
-    const { syncSeededProposals, SEEDED_PROPOSALS } = await import('@/lib/seed');
+  test('a stale seed-origin row leaves the database when seed is empty', async () => {
+    const { syncSeededProposals } = await import('@/lib/seed');
     db = openDb(':memory:');
     // this demo ships no seeded proposals, so a stale seed-origin row must be
     // pruned rather than outliving its removal from the file
@@ -164,28 +164,12 @@ describe('syncSeededProposals', () => {
 
     const ids = db.proposals.all().map((p) => p.id);
     expect(ids).not.toContain('stale-seed');
-    for (const p of SEEDED_PROPOSALS) expect(ids).toContain(p.id);
+    // SEEDED_PROPOSALS is now empty — no seeded proposals ship with the OS
   });
 
-  test('every seeded proposal carries a full name, not just a first name', async () => {
+  test('no seeded proposals ship with the OS', async () => {
     const { SEEDED_PROPOSALS } = await import('@/lib/seed');
-    for (const p of SEEDED_PROPOSALS) {
-      expect(p.client.trim().split(/\s+/).length).toBeGreaterThanOrEqual(2);
-    }
-  });
-
-  /**
-   * "put the passwords to the proposals next to the name
-   * of each client for their proposal access". Every proposal ships behind a
-   * StatiCrypt gate, and the code otherwise only exists on the laptop that built
-   * the page. Without it in the OS the operator has to go find that laptop to
-   * send a prospect their own link.
-   */
-  test('every seeded proposal carries the access code that opens it', async () => {
-    const { SEEDED_PROPOSALS } = await import('@/lib/seed');
-    for (const p of SEEDED_PROPOSALS) {
-      expect(p.accessCode.length).toBeGreaterThan(0);
-    }
+    expect(SEEDED_PROPOSALS).toEqual([]);
   });
 
   test('the access code survives the round trip through SQLite', () => {

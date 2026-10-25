@@ -5,17 +5,12 @@ import { hasBrandMark } from '@/lib/brand-logos';
 import { TOOL_BRANDS, toolBrand } from '@/lib/workflow-tool-brands';
 
 describe('workflow tool brands', () => {
-  test('every seeded workflow tool has an explicit entry that resolves to a real brand mark', () => {
+  test('no seeded workflows — tools set is empty', () => {
     const db = openDb(':memory:');
     seedDatabase(db);
     const tools = new Set(db.workflows.all().flatMap((w) => w.steps.flatMap((s) => s.tools)));
     db.close();
-    expect(tools.size).toBeGreaterThanOrEqual(10);
-    for (const t of tools) {
-      expect(TOOL_BRANDS[t], `workflow tool '${t}' is missing an explicit brand entry`).toBeDefined();
-      const b = toolBrand(t);
-      expect(hasBrandMark(b.slug, b.name), `brand slug '${b.slug}' (tool '${t}') has no mark`).toBe(true);
-    }
+    expect(tools.size).toBe(0);
   });
 
   test('display names are human, not raw ids', () => {

@@ -73,71 +73,23 @@ describe('people + sopTasks repos', () => {
   });
 });
 
-describe('seeded SOP graph data', () => {
-  test('seeding is idempotent for people and tasks', () => {
+describe('seeded SOP graph data — now EMPTY (no demo data)', () => {
+  test('seeding produces zero people and zero tasks', () => {
     const d = seeded();
-    const people = d.people.all().length;
-    const tasks = d.sopTasks.all().length;
-    expect(people).toBeGreaterThan(0);
-    expect(tasks).toBeGreaterThan(0);
+    expect(d.people.all()).toHaveLength(0);
+    expect(d.sopTasks.all()).toHaveLength(0);
+    expect(d.agents.all().length).toBeGreaterThan(0); // agents still seeded
+  });
+
+  test('seeding is idempotent (empty stays empty)', () => {
+    const d = seeded();
     seedDatabase(d);
-    expect(d.people.all().length).toBe(people);
-    expect(d.sopTasks.all().length).toBe(tasks);
+    expect(d.people.all()).toHaveLength(0);
+    expect(d.sopTasks.all()).toHaveLength(0);
   });
 
-  test('every task assignee exists and belongs to the task department', () => {
+  test('no tasks means no assignee checks needed', () => {
     const d = seeded();
-    const agents = new Map(d.agents.all().map((a) => [a.id, a.departmentId]));
-    const people = new Map(d.people.all().map((p) => [p.id, p.departmentId]));
-    for (const t of d.sopTasks.all()) {
-      const dept = t.assigneeKind === 'agent' ? agents.get(t.assigneeId) : people.get(t.assigneeId);
-      expect(dept, `${t.id} assignee ${t.assigneeId} missing`).toBeDefined();
-      expect(dept, `${t.id} assignee ${t.assigneeId} in wrong department`).toBe(t.departmentId);
-    }
-  });
-
-  test('monogamy: no worker (human or agent) is assigned more than one task', () => {
-    const d = seeded();
-    const seen = new Set<string>();
-    for (const t of d.sopTasks.all()) {
-      const key = `${t.assigneeKind}:${t.assigneeId}`;
-      expect(seen.has(key), `${key} assigned to more than one task`).toBe(false);
-      seen.add(key);
-    }
-  });
-
-  test('every agent has exactly one task', () => {
-    const d = seeded();
-    const assigned = d.sopTasks.all().filter((t) => t.assigneeKind === 'agent').map((t) => t.assigneeId);
-    expect(assigned.sort()).toEqual(d.agents.all().map((a) => a.id).sort());
-  });
-
-  test('every person has exactly one task and at least one tool', () => {
-    const d = seeded();
-    const assigned = d.sopTasks.all().filter((t) => t.assigneeKind === 'person').map((t) => t.assigneeId);
-    expect(assigned.sort()).toEqual(d.people.all().map((p) => p.id).sort());
-    for (const p of d.people.all()) {
-      expect(p.tools.length, `${p.id} has no tools`).toBeGreaterThan(0);
-    }
-  });
-
-  test('every seeded SOP is built out: at least 5 concrete steps, none thin', () => {
-    const d = seeded();
-    for (const t of d.sopTasks.all()) {
-      expect(t.steps.length, `${t.id} has only ${t.steps.length} steps`).toBeGreaterThanOrEqual(5);
-      for (const s of t.steps) {
-        expect(s.length, `${t.id} step too thin: "${s}"`).toBeGreaterThanOrEqual(20);
-      }
-    }
-  });
-
-  test('person tools stay inside the tool namespace agents already use', () => {
-    const d = seeded();
-    const known = new Set(d.agents.all().flatMap((a) => a.tools));
-    for (const p of d.people.all()) {
-      for (const slug of p.tools) {
-        expect(known.has(slug), `${p.id} tool ${slug} unknown to the org`).toBe(true);
-      }
-    }
+    expect(d.sopTasks.all()).toHaveLength(0);
   });
 });

@@ -20,7 +20,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { getDb, closeDb } from '@/lib/data';
+import { getDb } from '@/lib/data';
 import {
   type JarvisProject,
   type JarvisStage,
@@ -497,18 +497,14 @@ export async function runAll({
   reason?: string;
 }> {
   const db = getDb();
-  try {
-    if (killSwitchActive(db.jarvis.settings.get('killSwitchIntent'))) {
-      return { results: [], paused: true, reason: 'Kill switch is on.' };
-    }
-    const projects = db.jarvis.projects.all();
-    const results = [];
-    for (const p of projects) {
-      const r = await runProject({ project: p, trigger, db });
-      results.push({ projectId: p.id, name: p.name, status: r.status, summary: r.summary });
-    }
-    return { results };
-  } finally {
-    closeDb();
+  if (killSwitchActive(db.jarvis.settings.get('killSwitchIntent'))) {
+    return { results: [], paused: true, reason: 'Kill switch is on.' };
   }
+  const projects = db.jarvis.projects.all();
+  const results = [];
+  for (const p of projects) {
+    const r = await runProject({ project: p, trigger, db });
+    results.push({ projectId: p.id, name: p.name, status: r.status, summary: r.summary });
+  }
+  return { results };
 }

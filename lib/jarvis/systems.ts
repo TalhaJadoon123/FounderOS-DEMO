@@ -13,7 +13,7 @@
 import { allConnectorStatuses, connectorStatusById } from '@/lib/connectors/index';
 import type { ConnectorStatus } from '@/lib/connectors/types';
 import { INTEGRATIONS } from '@/lib/integrations-catalog';
-import { getDb, closeDb } from '@/lib/data';
+import { getDb } from '@/lib/data';
 
 export type SystemStatus = ConnectorStatus & {
   /** Integration catalog slug, when the system is in the marketplace. */
@@ -127,8 +127,6 @@ function readSnapshot(): Snapshot | null {
     return { at: parsed.at, connected: parsed.connected.filter((x): x is string => typeof x === 'string') };
   } catch {
     return null;
-  } finally {
-    closeDb();
   }
 }
 
@@ -139,11 +137,7 @@ function writeSnapshot(systems: SystemStatus[]): string {
     connected: systems.filter((s) => s.state === 'connected').map((s) => s.id),
   };
   const db = getDb();
-  try {
-    db.jarvis.settings.set(SNAPSHOT_KEY, JSON.stringify(snapshot));
-  } finally {
-    closeDb();
-  }
+  db.jarvis.settings.set(SNAPSHOT_KEY, JSON.stringify(snapshot));
   return at;
 }
 

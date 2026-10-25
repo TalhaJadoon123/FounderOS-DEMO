@@ -134,6 +134,7 @@ const ROUTES: RouteEntry[] = [
   { route: 'jarvis/funding/ledger', load: () => import('@/app/api/jarvis/funding/ledger/route'), url: 'http://localhost/api/jarvis/funding/ledger' },
   { route: 'jarvis/funding/reconcile', load: () => import('@/app/api/jarvis/funding/reconcile/route'), url: 'http://localhost/api/jarvis/funding/reconcile?projectId=jarvis-launchpad-1' },
   { route: 'jarvis/funding/export', load: () => import('@/app/api/jarvis/funding/export/route'), url: 'http://localhost/api/jarvis/funding/export', parse: 'text' },
+  { route: 'openapi', load: () => import('@/app/api/openapi/route'), url: 'http://localhost/api/openapi' },
 ];
 
 function discoverGetRoutes(dir: string, base = ''): string[] {

@@ -36,6 +36,9 @@ services:
 
 networks:
   founder-os:
+    # Stable name so a bot container in another compose project can join it
+    # without depending on this directory's name.
+    name: founder-os-net
     driver: bridge
 
 volumes:

@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { gateDecision, challengePage, GATE_COOKIE } from '@/lib/access-gate';
+import { gateDecision, challengePage, GATE_COOKIE, isHealthProbe, isIngestRequest } from '@/lib/access-gate';
 
 /**
  * The production access gate. A student's FounderOS deploys to a PUBLIC
@@ -43,6 +43,55 @@ describe('challenge page', () => {
     expect(html).toContain('<form');
     expect(html).toContain('name="token"');
     expect(html.toLowerCase()).toContain('founderos');
+  });
+});
+
+describe('middleware exemptions', () => {
+  const headers = (values: Record<string, string> = {}): Headers => new Headers(values);
+
+  test('accepts the ingest token only on ingest paths', () => {
+    expect(
+      isIngestRequest({
+        pathname: '/api/finances/bot-sync',
+        headers: headers({ authorization: 'Bearer s3cret' }),
+        ingestToken: 's3cret',
+      }),
+    ).toBe(true);
+    expect(
+      isIngestRequest({
+        pathname: '/api/finances/bot-sync',
+        headers: headers({ 'x-jarvis-token': 's3cret' }),
+        ingestToken: 's3cret',
+      }),
+    ).toBe(true);
+    // Wrong token, wrong path, or no configured token all fail closed.
+    expect(
+      isIngestRequest({
+        pathname: '/api/finances/bot-sync',
+        headers: headers({ authorization: 'Bearer nope' }),
+        ingestToken: 's3cret',
+      }),
+    ).toBe(false);
+    expect(
+      isIngestRequest({
+        pathname: '/api/jarvis/actions',
+        headers: headers({ authorization: 'Bearer s3cret' }),
+        ingestToken: 's3cret',
+      }),
+    ).toBe(false);
+    expect(
+      isIngestRequest({
+        pathname: '/api/finances/bot-sync',
+        headers: headers({ authorization: 'Bearer ' }),
+        ingestToken: undefined,
+      }),
+    ).toBe(false);
+  });
+
+  test('health probes are open but the detailed report stays gated', () => {
+    expect(isHealthProbe('/api/health', new URLSearchParams())).toBe(true);
+    expect(isHealthProbe('/api/health', new URLSearchParams('full=1'))).toBe(false);
+    expect(isHealthProbe('/api/other', new URLSearchParams())).toBe(false);
   });
 });
 

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { challengePage, gateDecision, GATE_COOKIE } from '@/lib/access-gate';
+import {
+  challengePage,
+  gateDecision,
+  GATE_COOKIE,
+  isHealthProbe,
+  isIngestRequest,
+} from '@/lib/access-gate';
 
 /**
  * Whole-app access gate. Active only when FOUNDER_OS_ACCESS_TOKEN is set
@@ -7,6 +13,21 @@ import { challengePage, gateDecision, GATE_COOKIE } from '@/lib/access-gate';
  * completely open. See lib/access-gate.ts for the decision logic + tests.
  */
 export function middleware(req: NextRequest) {
+  // The bot and Docker health probes must keep working when the browser gate
+  // is on. Both exemptions are narrow and fail closed without a token.
+  if (isHealthProbe(req.nextUrl.pathname, req.nextUrl.searchParams)) {
+    return NextResponse.next();
+  }
+  if (
+    isIngestRequest({
+      pathname: req.nextUrl.pathname,
+      headers: req.headers,
+      ingestToken: process.env.JARVIS_LOCAL_INGEST_TOKEN,
+    })
+  ) {
+    return NextResponse.next();
+  }
+
   const decision = gateDecision({
     token: process.env.FOUNDER_OS_ACCESS_TOKEN,
     cookie: req.cookies.get(GATE_COOKIE)?.value ?? null,

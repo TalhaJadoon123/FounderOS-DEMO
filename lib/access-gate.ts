@@ -29,6 +29,43 @@ export function gateDecision(input: {
   return { kind: 'challenge' };
 }
 
+/**
+ * Routes a local bot may call with the ingest bearer token even when the
+ * whole-app access gate is on. Least privilege: only the money/trading ingest
+ * surface, never the rest of the API.
+ */
+const INGEST_PATH_PREFIXES = ['/api/finances/', '/api/trading/snapshot'] as const;
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/** True when the request carries the configured ingest token on an ingest path. */
+export function isIngestRequest(input: {
+  pathname: string;
+  headers: Headers;
+  ingestToken: string | undefined;
+}): boolean {
+  const token = input.ingestToken?.trim();
+  if (!token) return false;
+  if (!INGEST_PATH_PREFIXES.some((prefix) => input.pathname.startsWith(prefix))) return false;
+
+  const auth = input.headers.get('authorization');
+  const provided = auth?.startsWith('Bearer ')
+    ? auth.slice(7).trim()
+    : (input.headers.get('x-jarvis-token')?.trim() ?? '');
+  return provided.length > 0 && timingSafeEqual(provided, token);
+}
+
+/** Docker/uptime probes must stay reachable while the access gate is on. The
+ *  detailed report (?full=1) is still gated. */
+export function isHealthProbe(pathname: string, searchParams: URLSearchParams): boolean {
+  return pathname === '/api/health' && !searchParams.has('full');
+}
+
 /** Self-contained challenge page: no app chrome, no data, just the form. */
 export function challengePage(): string {
   return `<!doctype html>

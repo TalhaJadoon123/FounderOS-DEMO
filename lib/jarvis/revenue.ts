@@ -14,7 +14,7 @@
  * real take-home (gross − processor fees), not just the headline number.
  */
 
-import { getDb, closeDb } from '@/lib/data';
+import { getDb } from '@/lib/data';
 import { JarvisRevenueSchema, type JarvisRevenue } from '@/lib/schemas';
 
 /* ────────────────────────── shared types ────────────────────────── */
@@ -319,7 +319,7 @@ async function fetchNowPayments(
     )}&skip=${skip}`,
     {
       headers: {
-        Authorization: `NOWPayments-${key}`,
+        'x-api-key': key,
         Accept: 'application/json',
       },
       cache: 'no-store',
@@ -401,30 +401,26 @@ async function syncPayments(
   projectId?: string,
 ): Promise<RevenueSyncResult> {
   const db = getDb();
-  try {
-    const knownProjects = new Set(db.jarvis.projects.all().map((p) => p.id));
-    let synced = 0;
+  const knownProjects = new Set(db.jarvis.projects.all().map((p) => p.id));
+  let synced = 0;
 
-    for (const payment of payments) {
-      const revenue = mapPaymentToRevenue(payment, source, knownProjects, 'sale');
-      if (!revenue) continue;
-      if (projectId && revenue.projectId !== projectId) continue;
-      const inserted = db.jarvis.revenue.insertIdempotent(revenue);
-      if (inserted) synced += 1;
-    }
-
-    return {
-      ok: true,
-      synced,
-      scanned: payments.length,
-      summary:
-        synced > 0
-          ? `Synced ${synced} ${source} payment(s) from ${payments.length} scanned.`
-          : `${source} reachable — no new attributed payments in ${payments.length} scan(s).`,
-    };
-  } finally {
-    closeDb();
+  for (const payment of payments) {
+    const revenue = mapPaymentToRevenue(payment, source, knownProjects, 'sale');
+    if (!revenue) continue;
+    if (projectId && revenue.projectId !== projectId) continue;
+    const inserted = db.jarvis.revenue.insertIdempotent(revenue);
+    if (inserted) synced += 1;
   }
+
+  return {
+    ok: true,
+    synced,
+    scanned: payments.length,
+    summary:
+      synced > 0
+        ? `Synced ${synced} ${source} payment(s) from ${payments.length} scanned.`
+        : `${source} reachable — no new attributed payments in ${payments.length} scan(s).`,
+  };
 }
 
 /**
@@ -522,20 +518,16 @@ export function recordLocalFunding({
   };
 
   const db = getDb();
-  try {
-    const inserted = db.jarvis.revenue.insertIdempotent(revenue);
-    if (!inserted) {
-      // Already exists — return the existing row so the caller gets a stable id.
-      const existing = db.jarvis.revenue.getBySourceExternal(type, reference);
-      if (existing) return existing;
-      // Fallback: shouldn't happen, but insert anyway if the row vanished.
-      db.jarvis.revenue.insert(revenue);
-      return revenue;
-    }
+  const inserted = db.jarvis.revenue.insertIdempotent(revenue);
+  if (!inserted) {
+    // Already exists — return the existing row so the caller gets a stable id.
+    const existing = db.jarvis.revenue.getBySourceExternal(type, reference);
+    if (existing) return existing;
+    // Fallback: shouldn't happen, but insert anyway if the row vanished.
+    db.jarvis.revenue.insert(revenue);
     return revenue;
-  } finally {
-    closeDb();
   }
+  return revenue;
 }
 
 /**
@@ -579,18 +571,14 @@ export function recordTradePnl({
   };
 
   const db = getDb();
-  try {
-    const inserted = db.jarvis.revenue.insertIdempotent(revenue);
-    if (!inserted) {
-      const existing = db.jarvis.revenue.getBySourceExternal('trade_pnl', reference);
-      if (existing) return existing;
-      db.jarvis.revenue.insert(revenue);
-      return revenue;
-    }
+  const inserted = db.jarvis.revenue.insertIdempotent(revenue);
+  if (!inserted) {
+    const existing = db.jarvis.revenue.getBySourceExternal('trade_pnl', reference);
+    if (existing) return existing;
+    db.jarvis.revenue.insert(revenue);
     return revenue;
-  } finally {
-    closeDb();
   }
+  return revenue;
 }
 
 /* ────────────────────────── reconciliation ────────────────────────── */
@@ -608,48 +596,44 @@ export function reconcileProject(projectId: string): {
   bySource: Array<{ source: string; gross: number; fees: number; net: number; count: number }>;
 } {
   const db = getDb();
-  try {
-    const rows = db.jarvis.revenue.byProject(projectId);
+  const rows = db.jarvis.revenue.byProject(projectId);
 
-    const bySourceMap = new Map<
-      string,
-      { gross: number; fees: number; net: number; count: number }
-    >();
+  const bySourceMap = new Map<
+    string,
+    { gross: number; fees: number; net: number; count: number }
+  >();
 
-    let gross = 0;
-    let fees = 0;
-    let net = 0;
+  let gross = 0;
+  let fees = 0;
+  let net = 0;
 
-    for (const r of rows) {
-      gross += r.amountCents;
-      fees += r.feeCents ?? 0;
-      net += r.netCents ?? r.amountCents - (r.feeCents ?? 0);
+  for (const r of rows) {
+    gross += r.amountCents;
+    fees += r.feeCents ?? 0;
+    net += r.netCents ?? r.amountCents - (r.feeCents ?? 0);
 
-      const cur = bySourceMap.get(r.source) ?? { gross: 0, fees: 0, net: 0, count: 0 };
-      cur.gross += r.amountCents;
-      cur.fees += r.feeCents ?? 0;
-      cur.net += r.netCents ?? r.amountCents - (r.feeCents ?? 0);
-      cur.count += 1;
-      bySourceMap.set(r.source, cur);
-    }
-
-    return {
-      projectId,
-      grossCents: gross,
-      feeCents: fees,
-      netCents: net,
-      count: rows.length,
-      bySource: Array.from(bySourceMap.entries()).map(([source, v]) => ({
-        source,
-        gross: v.gross,
-        fees: v.fees,
-        net: v.net,
-        count: v.count,
-      })),
-    };
-  } finally {
-    closeDb();
+    const cur = bySourceMap.get(r.source) ?? { gross: 0, fees: 0, net: 0, count: 0 };
+    cur.gross += r.amountCents;
+    cur.fees += r.feeCents ?? 0;
+    cur.net += r.netCents ?? r.amountCents - (r.feeCents ?? 0);
+    cur.count += 1;
+    bySourceMap.set(r.source, cur);
   }
+
+  return {
+    projectId,
+    grossCents: gross,
+    feeCents: fees,
+    netCents: net,
+    count: rows.length,
+    bySource: Array.from(bySourceMap.entries()).map(([source, v]) => ({
+      source,
+      gross: v.gross,
+      fees: v.fees,
+      net: v.net,
+      count: v.count,
+    })),
+  };
 }
 
 /**
@@ -667,39 +651,35 @@ export function listLedger({
   offset?: number;
 }): JarvisRevenue[] {
   const db = getDb();
-  try {
-    const allRows = projectId
-      ? db.jarvis.revenue.byProject(projectId)
-      : db.jarvis.revenue.all();
+  const allRows = projectId
+    ? db.jarvis.revenue.byProject(projectId)
+    : db.jarvis.revenue.all();
 
-    let filtered = allRows;
-    if (source) {
-      filtered = filtered.filter((r) => r.source === source);
-    }
-
-    // occurred_at DESC is already the order from byProject/all; apply offset/limit.
-    const start = Math.max(offset, 0);
-    const end = start + Math.min(Math.max(limit, 1), 500);
-    const page = filtered.slice(start, end);
-
-    return page.map((r) =>
-      JarvisRevenueSchema.parse({
-        id: r.id,
-        projectId: r.projectId,
-        source: r.source,
-        externalId: r.externalId,
-        customer: r.customer,
-        amountCents: r.amountCents,
-        feeCents: r.feeCents ?? 0,
-        netCents: r.netCents ?? 0,
-        currency: r.currency,
-        status: r.status,
-        occurredAt: r.occurredAt,
-      }),
-    );
-  } finally {
-    closeDb();
+  let filtered = allRows;
+  if (source) {
+    filtered = filtered.filter((r) => r.source === source);
   }
+
+  // occurred_at DESC is already the order from byProject/all; apply offset/limit.
+  const start = Math.max(offset, 0);
+  const end = start + Math.min(Math.max(limit, 1), 500);
+  const page = filtered.slice(start, end);
+
+  return page.map((r) =>
+    JarvisRevenueSchema.parse({
+      id: r.id,
+      projectId: r.projectId,
+      source: r.source,
+      externalId: r.externalId,
+      customer: r.customer,
+      amountCents: r.amountCents,
+      feeCents: r.feeCents ?? 0,
+      netCents: r.netCents ?? 0,
+      currency: r.currency,
+      status: r.status,
+      occurredAt: r.occurredAt,
+    }),
+  );
 }
 
 /**

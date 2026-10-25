@@ -38,6 +38,28 @@ npm run seed                 # re-seed the demo DB (idempotent)
 
 ---
 
+## Funding, trading, and the bot
+
+FounderOS tracks real revenue and real MT5 account data. Revenue sync supports
+Stripe, Wise, and NOWPayments (`JARVIS_PAYMENT_PROVIDER`), and a local
+Loopader/MT5 bot writes account snapshots and trades over an authenticated
+ingest API.
+
+- `/trading` shows seeded demo rows **only until the first real sync**; that
+  sync retires every `source = 'seed'` row.
+- `POST /api/finances/bot-sync` — account snapshot + positions + closed trades.
+- `POST /api/finances/transfer` — deposits / withdrawals with a negative-balance
+  guard.
+- `GET /api/jarvis/funding/ledger`, `/reconcile`, `/export` — read the ledger.
+- `GET /api/health?full=1` — real database, disk, and configured-provider status.
+  There are no fake green checks.
+- `GET /api/openapi` and `/api-docs` — the machine- and human-readable contract.
+
+See [docs/BOT_INTEGRATION.md](docs/BOT_INTEGRATION.md) for the payload, auth
+token, Docker networking, and the MT5 bridge checklist.
+
+---
+
 ## Desktop app
 
 The OS also runs as a native desktop window — its own taskbar entry, its own

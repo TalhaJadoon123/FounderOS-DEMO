@@ -7,9 +7,12 @@ Founder OS turns the tabs, tools, and mental overhead of running a solo business
 into one screen: unified comms, a client funnel, social growth, finances, a
 knowledge graph, and a roster of named AI agents that each own a real job.
 
-This repository is the **open-source demo build**. It ships seeded with
-realistic placeholder data, so every page is alive out of the box with no
-accounts, no API keys, and nothing to configure.
+This repository is the **open-source real-ready build**. It ships with **zero
+demo data** — every page shows honest empty/not_configured states until you
+connect real credentials. No fake numbers, no seeded demo content.
+
+> **First time?** Start with the [Quickstart Guide](docs/QUICKSTART_INTEGRATIONS.md)
+> then dive into the [Full Integrations Guide](docs/INTEGRATIONS_GUIDE.md).
 
 ---
 
@@ -19,12 +22,12 @@ Requires **Node 22**.
 
 ```bash
 npm install
-cp .env.example .env.local   # optional; only needed to wire live integrations
+cp .env.example .env.local   # required to wire live integrations
 npm run dev                  # http://localhost:4100
 ```
 
-A local SQLite database is **seeded with demo data on first run**, so every page
-is populated immediately. No credentials are required to browse. Navigate with
+A local SQLite database is **created empty on first run** — no demo content.
+Every page shows honest "not configured" until you add API keys. Navigate with
 the sidebar or the Command Palette (Cmd/Ctrl + K). Five themes ship, including
 the Monolith default (white on black, color means status only); pick it from the
 palette icon in the top bar.
@@ -33,8 +36,23 @@ palette icon in the top bar.
 npm run build && npm start   # production build
 npm test                     # vitest suite
 npm run typecheck            # tsc --noEmit
-npm run seed                 # re-seed the demo DB (idempotent)
+npm run seed                 # seeds ONLY structural data (departments, agents, crons)
 ```
+
+---
+
+## Core philosophy: Real only, no demo data
+
+| What you see | When |
+|--------------|------|
+| `not_configured` badges | Key not set |
+| `connected` badges | Key set + live API responds |
+| `error` badges | Key set but API failed |
+| Empty tables/charts | No data in source yet |
+| Real numbers | Live data flowing |
+
+**No seeded demo data anywhere** — not in social, funnel, trading, brain, finances, or brand deals.
+The OS tells you exactly what's missing and what to add.
 
 ---
 
@@ -299,6 +317,15 @@ state the network returned.
 
 ---
 
+## Documentation
+
+- **[Quickstart Integrations](docs/QUICKSTART_INTEGRATIONS.md)** — One-page checklist per integration
+- **[Full Integrations Guide](docs/INTEGRATIONS_GUIDE.md)** — Complete reference for all 23+ connectors
+- **[Bot Integration](docs/BOT_INTEGRATION.md)** — Loopader/MT5 bridge contract, auth, Docker networking
+- **[API Reference](http://localhost:4100/api-docs)** — Live OpenAPI spec (offline, no CDN)
+
+---
+
 ## Deploying to Railway
 
 1. Create a Railway project and point it at this repo.
@@ -311,10 +338,11 @@ state the network returned.
 
 ---
 
-## Note on the demo data
+## Note on the data
 
-This is a demo build. All names, companies, clients, financial figures, and
-social numbers are **placeholder data**. Nothing here is real.
+This is a **real-ready build with zero demo data**. All tables start empty.
+Every page shows honest "not configured" until you add real API keys.
+Nothing here is placeholder — connect your credentials and it becomes your real OS.
 
 ## License
 

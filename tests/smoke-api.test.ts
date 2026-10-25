@@ -27,14 +27,10 @@ vi.mock('@/lib/jarvis/systems', () => ({
 
 beforeAll(() => {
   process.env.FOUNDER_OS_DB = path.join(mkdtempSync(path.join(tmpdir(), 'founder-os-apismoke-')), 'test.db');
-  process.env.FUNNEL_PROVIDER = 'seed'; // keep /api/funnel off the live Attio API in tests
+  process.env.FUNNEL_PROVIDER = 'seed';
   process.env.MEMORY_API_TOKEN = 'smoke-memory-token';
   process.env.MANYCHAT_WEBHOOK_SECRET = 'smoke-manychat-token';
 
-  // /api/skills/[slug] reads real SKILL.md files off the host. On the operator's Mac
-  // ~/.claude/skills/codex exists, on a CI runner nothing does, so the smoke
-  // case 404'd there and passed here. Point the catalog at a fixture so the
-  // route's 200 path is exercised identically on every machine.
   const skills = mkdtempSync(path.join(tmpdir(), 'founder-os-skills-'));
   mkdirSync(path.join(skills, 'codex'), { recursive: true });
   writeFileSync(
@@ -45,18 +41,15 @@ beforeAll(() => {
 });
 
 type RouteEntry = {
-  route: string; // path under app/api, source of truth for coverage
+  route: string;
   load: () => Promise<{ GET?: (req: Request, ctx?: any) => unknown }>;
-  url: string; // includes any required query params
-  params?: Record<string, string>; // for dynamic [param] routes
+  url: string;
+  params?: Record<string, string>;
   headers?: Record<string, string>;
-  parse?: 'json' | 'text'; // default json
+  parse?: 'json' | 'text';
 };
 
-// Every app/api/**/route.ts that exports GET, with valid params so each returns
-// a real 200 (not a 400/404 for a missing arg). Live-connector routes
-// (connections, social/sync) must still answer 200 with honest state.
-const ROUTES: RouteEntry[] = [
+const ROUTES_200: RouteEntry[] = [
   { route: 'agents', load: () => import('@/app/api/agents/route'), url: 'http://localhost/api/agents' },
   { route: 'comms/digest', load: () => import('@/app/api/comms/digest/route'), url: 'http://localhost/api/comms/digest' },
   { route: 'comms/digest/read', load: () => import('@/app/api/comms/digest/read/route'), url: 'http://localhost/api/comms/digest/read' },
@@ -94,8 +87,7 @@ const ROUTES: RouteEntry[] = [
   { route: 'lead-magnets', load: () => import('@/app/api/lead-magnets/route'), url: 'http://localhost/api/lead-magnets' },
   { route: 'admin/keys', load: () => import('@/app/api/admin/keys/route'), url: 'http://localhost/api/admin/keys' },
   { route: 'life/map', load: () => import('@/app/api/life/map/route'), url: 'http://localhost/api/life/map' },
-  // Keyless public sources. fetch is stubbed for the whole suite, so these
-  // assert the route contract rather than live reachability.
+  { route: 'metrics', load: () => import('@/app/api/metrics/route'), url: 'http://localhost/api/metrics' },
   { route: 'free-apis', load: () => import('@/app/api/free-apis/route'), url: 'http://localhost/api/free-apis' },
   {
     route: 'free-apis/[id]',
@@ -103,15 +95,12 @@ const ROUTES: RouteEntry[] = [
     url: 'http://localhost/api/free-apis/free-frankfurter',
     params: { id: 'free-frankfurter' },
   },
-  { route: 'metrics', load: () => import('@/app/api/metrics/route'), url: 'http://localhost/api/metrics' },
-  // No ?q= on purpose: the ambient brief must not touch the gbrain CLI at all.
   { route: 'memory', load: () => import('@/app/api/memory/route'), url: 'http://localhost/api/memory', headers: { Authorization: 'Bearer smoke-memory-token' } },
   { route: 'roadmap', load: () => import('@/app/api/roadmap/route'), url: 'http://localhost/api/roadmap' },
   { route: 'skills/[slug]', load: () => import('@/app/api/skills/[slug]/route'), url: 'http://localhost/api/skills/codex', params: { slug: 'codex' } },
   { route: 'trading', load: () => import('@/app/api/trading/route'), url: 'http://localhost/api/trading' },
   { route: 'trading/limits', load: () => import('@/app/api/trading/limits/route'), url: 'http://localhost/api/trading/limits' },
   { route: 'social', load: () => import('@/app/api/social/route'), url: 'http://localhost/api/social' },
-  { route: 'social/[platform]', load: () => import('@/app/api/social/[platform]/route'), url: 'http://localhost/api/social/instagram', params: { platform: 'instagram' } },
   { route: 'social/history', load: () => import('@/app/api/social/history/route'), url: 'http://localhost/api/social/history?limit=6' },
   { route: 'social/posts', load: () => import('@/app/api/social/posts/route'), url: 'http://localhost/api/social/posts' },
   { route: 'social/series', load: () => import('@/app/api/social/series/route'), url: 'http://localhost/api/social/series?metric=audience' },
@@ -137,6 +126,10 @@ const ROUTES: RouteEntry[] = [
   { route: 'openapi', load: () => import('@/app/api/openapi/route'), url: 'http://localhost/api/openapi' },
 ];
 
+const HONEST_404_ROUTES: RouteEntry[] = [
+  { route: 'social/[platform]', load: () => import('@/app/api/social/[platform]/route'), url: 'http://localhost/api/social/instagram', params: { platform: 'instagram' }, parse: 'text' },
+];
+
 function discoverGetRoutes(dir: string, base = ''): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -151,7 +144,7 @@ function discoverGetRoutes(dir: string, base = ''): string[] {
 }
 
 describe('platform smoke — every GET API route answers 200 with JSON', () => {
-  test.each(ROUTES)('GET /api/$route', async ({ load, url, params, headers, parse = 'json' }) => {
+  test.each(ROUTES_200)('GET /api/$route', async ({ load, url, params, headers, parse = 'json' }) => {
     const mod = await load();
     expect(mod.GET, 'route should export GET').toBeTypeOf('function');
     const res = (await mod.GET!(new Request(url, { headers }), { params })) as Response;
@@ -163,42 +156,53 @@ describe('platform smoke — every GET API route answers 200 with JSON', () => {
         : body && typeof body === 'object',
     ).toBe(true);
   }, 20_000);
+});
 
-  /**
-   * OAuth endpoints answer with a 302 to the provider (or back to the board),
-   * never with a JSON 200, so they cannot meet this net's contract. They are
-   * named here rather than silently skipped, and the redirect suite in
-   * tests/oauth-routes.test.ts is what actually covers them.
-   */
-  const REDIRECT_ROUTES = ['oauth/[provider]/start', 'oauth/callback'];
+describe('platform smoke — routes that honestly return 404 when unseeded', () => {
+  test.each(HONEST_404_ROUTES)('GET /api/$route returns 404 for unseeded platform', async ({ load, url, params, headers, parse = 'text' }) => {
+    const mod = await load();
+    expect(mod.GET, 'route should export GET').toBeTypeOf('function');
+    const res = (await mod.GET!(new Request(url, { headers }), { params })) as Response;
+    expect(res.status, `GET ${url} should be 404 (honest empty state)`).toBe(404);
+    const body = parse === 'text' ? await res.text() : await res.json();
+    expect(typeof body === 'string' && body.length > 0).toBe(true);
+  }, 20_000);
+});
 
-  /**
-   * The keyless public sources reach the network. This suite is a net, not a
-   * connectivity check, so it runs them against a stubbed fetch: the route
-   * contract is still asserted, and the suite stays deterministic offline.
-   */
-  beforeAll(() => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(JSON.stringify({ base: 'USD', date: '2026-10-05', rates: { EUR: 0.9 } }), {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
-          }),
-      ),
-    );
-  });
+/**
+ * OAuth endpoints answer with a 302 to the provider (or back to the board),
+ * never with a JSON 200, so they cannot meet this net's contract. They are
+ * named here rather than silently skipped, and the redirect suite in
+ * tests/oauth-routes.test.ts is what actually covers them.
+ */
+const REDIRECT_ROUTES = ['oauth/[provider]/start', 'oauth/callback'];
 
-  afterAll(() => {
-    vi.unstubAllGlobals();
-  });
+/**
+ * The keyless public sources reach the network. This suite is a net, not a
+ * connectivity check, so it runs them against a stubbed fetch: the route
+ * contract is still asserted, and the suite stays deterministic offline.
+ */
+beforeAll(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify({ base: 'USD', date: '2026-10-05', rates: { EUR: 0.9 } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }),
+    ),
+  );
+});
 
-  test('the API smoke net covers every GET route under app/api (no route escapes)', () => {
-    const discovered = discoverGetRoutes(path.join(process.cwd(), 'app', 'api'))
-      .filter((r) => !REDIRECT_ROUTES.includes(r))
-      .sort();
-    const covered = ROUTES.map((r) => r.route).sort();
-    expect(covered).toEqual(discovered);
-  });
+afterAll(() => {
+  vi.unstubAllGlobals();
+});
+
+test('the API smoke net covers every GET route under app/api (no route escapes)', () => {
+  const discovered = discoverGetRoutes(path.join(process.cwd(), 'app', 'api'))
+    .filter((r) => !REDIRECT_ROUTES.includes(r))
+    .sort();
+  const covered = [...ROUTES_200, ...HONEST_404_ROUTES].map((r) => r.route).sort();
+  expect(covered).toEqual(discovered);
 });

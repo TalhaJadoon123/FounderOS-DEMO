@@ -111,15 +111,13 @@ describe('buildEmailList', () => {
   });
 });
 
-describe('DM totals', () => {
-  test('seeded DB exposes per-platform DM counts that sum to the total', () => {
+describe('DM totals — empty when no seed data', () => {
+  test('empty DB returns zero total DMs', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const byPlatform = dmsByPlatform(db);
-    expect(byPlatform.length).toBeGreaterThan(0);
-    const sum = byPlatform.reduce((s, d) => s + d.count, 0);
-    expect(totalDms(db)).toBe(sum);
-    expect(totalDms(db)).toBeGreaterThan(0);
+    expect(byPlatform).toHaveLength(0);
+    expect(totalDms(db)).toBe(0);
   });
 
   test('DM schema rejects unknown platforms and negative counts', () => {
@@ -130,6 +128,12 @@ describe('DM totals', () => {
 });
 
 describe('monthlyAudienceGrowthPct', () => {
+  test('returns null when no channel has 30-day history', () => {
+    db = openDb(':memory:');
+    seedDatabase(db);
+    expect(monthlyAudienceGrowthPct(db)).toBeNull();
+  });
+
   test('aggregates 30-day growth across channels with a baseline; null when none qualify', () => {
     db = openDb(':memory:');
     expect(monthlyAudienceGrowthPct(db)).toBeNull();
@@ -173,8 +177,7 @@ describe('DM history snapshots', () => {
     db.social.insertDmSnapshot({ platform: 'instagram', capturedAt: '2026-06-12', count: 1240, source: 'test' });
     db.social.insertDmSnapshot({ platform: 'tiktok', capturedAt: '2026-06-12', count: 360, source: 'test' });
     const series = dmSeries(db);
-    expect(series.at(-1)).toEqual({ date: '2026-06-12', value: 1600 }); // 1240 + 360
-    // 30d growth of the total: ig went 1000→1240 over the window (tiktok has no baseline)
+    expect(series.at(-1)).toEqual({ date: '2026-06-12', value: 1600 });
     expect(dmGrowthPct(db, 30)).toBeCloseTo(((1600 - 1000) / 1000) * 100, 5);
   });
 });
@@ -199,32 +202,27 @@ describe('audience series + range growth', () => {
     db.emailList.insertSnapshot(emailSnap('2026-04-13', 27000));
     db.emailList.insertSnapshot(emailSnap('2026-06-12', 30000));
     expect(audienceTotal(db)).toBe(70000);
-    // 60d window from 06-12 starts 04-13 → baseline 63000 → +11.11%
     expect(audienceGrowthPct(db, 60)).toBeCloseTo(((70000 - 63000) / 63000) * 100, 4);
-    // back-compat: monthly == audienceGrowthPct(db, 30)
     expect(monthlyAudienceGrowthPct(db)).toBe(audienceGrowthPct(db, 30));
   });
 });
 
-describe('seed history is deep enough for growth math', () => {
-  test('followers + DMs carry multi-month history; the real email list is young but honest', () => {
+describe('no seed history — growth math returns null when no data', () => {
+  test('followers + DMs are empty so growth is null', () => {
     db = openDb(':memory:');
     seedDatabase(db);
-    // followers span ~90 days, so the merged audience computes every window
-    expect(audienceGrowthPct(db, 7)).not.toBeNull();
-    expect(audienceGrowthPct(db, 30)).not.toBeNull();
-    expect(audienceGrowthPct(db, 60)).not.toBeNull();
-    expect(dmGrowthPct(db, 60)).not.toBeNull();
-    expect(db.social.dmSnapshots().length).toBeGreaterThan(50);
-    // the email list is the seeded Beehiiv account: its
-    // short window is computable, but 60d honestly predates the list → null
+    expect(audienceGrowthPct(db, 7)).toBeNull();
+    expect(audienceGrowthPct(db, 30)).toBeNull();
+    expect(audienceGrowthPct(db, 60)).toBeNull();
+    expect(dmGrowthPct(db, 60)).toBeNull();
+    expect(db.social.dmSnapshots().length).toBe(0);
     const email = buildEmailList(db);
-    expect(email.subscribers).toBe(1850);
-    expect(email.growth.d7).not.toBeNull();
+    expect(email.subscribers).toBeNull();
+    expect(email.growth.d7).toBeNull();
     expect(email.growth.d60).toBeNull();
   });
 
-  test('re-seed stays idempotent (no duplicate snapshot rows)', () => {
+  test('re-seed stays empty', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const before = db.social.dmSnapshots().length;

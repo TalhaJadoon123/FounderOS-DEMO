@@ -125,8 +125,8 @@ describe('syncSocialSnapshots', () => {
       {
         instagram: { handle: '@founderos.ai', followers: 42000 },
         tiktok: { handle: '@founderos.ai', followers: 12000 },
-        facebook: { handle: 'Talha', followers: 100 }, // untracked platform
-        linkedin: { handle: 'Talha' }, // no follower count yet
+        facebook: { handle: 'Talha', followers: 100 },
+        linkedin: { handle: 'Talha' },
       },
       '2026-06-13',
     );
@@ -147,89 +147,49 @@ describe('syncSocialSnapshots', () => {
   });
 });
 
-describe('buildSocialDashboard', () => {
-  test('lists the five platforms in account order with latest followers', () => {
+describe('buildSocialDashboard — honest empty state (no demo data)', () => {
+  test('returns empty platforms list when no accounts are seeded', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const dash = buildSocialDashboard(db);
-    expect(dash.platforms.map((p) => p.platform)).toEqual([
-      'instagram',
-      'tiktok',
-      'twitter',
-      'youtube',
-      'linkedin',
-    ]);
-    expect(dash.platforms[0].followers).toBe(42000);
-    // Every platform now carries ~90d of seeded dummy history (incl. LinkedIn)
-    // so each one charts and computes growth over every window.
-    expect(dash.platforms[4].followers).toBe(1500);
-  });
-
-  test('sums total followers across latest snapshots', () => {
-    db = openDb(':memory:');
-    seedDatabase(db);
-    expect(buildSocialDashboard(db).totalFollowers).toBe(42000 + 12000 + 5200 + 900 + 1500);
-  });
-
-  test('computes growth from snapshot history per platform', () => {
-    db = openDb(':memory:');
-    seedDatabase(db);
-    const ig = buildSocialDashboard(db).platforms.find((p) => p.platform === 'instagram');
-    // seeded ~90d history → latest is the seeded 42,000 and every window computes
-    expect(ig?.followers).toBe(42000);
-    expect(typeof ig?.growth.d7).toBe('number');
-    expect(typeof ig?.growth.d30).toBe('number');
-    expect(typeof ig?.growth.d60).toBe('number');
-    expect(typeof ig?.growth.allTime).toBe('number');
-    expect(ig?.series.length ?? 0).toBeGreaterThan(3);
+    expect(dash.platforms).toHaveLength(0);
+    expect(dash.totalFollowers).toBe(0);
+    expect(dash.asOf).toBeNull();
   });
 });
 
 describe('platformDetail', () => {
-  test('returns account, history, and growth for one platform', () => {
-    db = openDb(':memory:');
-    seedDatabase(db);
-    const detail = platformDetail(db, 'instagram');
-    expect(detail?.account.handle).toBe('@founderos.ai');
-    expect(detail?.snapshots.length).toBeGreaterThanOrEqual(1);
-    expect(detail?.growth).toHaveProperty('d7');
-    expect(detail?.growth).toHaveProperty('d30');
-    expect(detail?.growth).toHaveProperty('allTime');
-  });
-
-  test('is null for a platform that is not tracked', () => {
+  test('returns null for a platform that is not tracked', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     expect(platformDetail(db, 'myspace' as never)).toBeNull();
   });
+
+  test('returns null for a tracked platform with no seeded data', () => {
+    db = openDb(':memory:');
+    seedDatabase(db);
+    expect(platformDetail(db, 'instagram')).toBeNull();
+  });
 });
 
-describe('seeded social data', () => {
-  test('seeds the five accounts with real handles', () => {
+describe('no seeded social data', () => {
+  test('no accounts are seeded', () => {
     db = openDb(':memory:');
     seedDatabase(db);
-    const byPlatform = new Map(db.social.accounts().map((a) => [a.platform, a]));
-    expect(byPlatform.get('instagram')?.handle).toBe('@founderos.ai');
-    expect(byPlatform.get('twitter')?.handle).toBe('@Founderosai');
-    expect(byPlatform.get('linkedin')?.handle).toBe('Talha');
+    expect(db.social.accounts()).toHaveLength(0);
   });
 
-  test('seeds multi-month history ending at the seeded current value', () => {
+  test('no snapshots are seeded', () => {
     db = openDb(':memory:');
     seedDatabase(db);
-    expect(db.social.snapshots('youtube').at(-1)?.followers).toBe(900);
-    // LinkedIn is fully dummy (no Zernio count) but still gets a history series
-    expect(db.social.snapshots('linkedin').length).toBeGreaterThan(3);
-    expect(db.social.snapshots('linkedin').at(-1)?.followers).toBe(1500);
+    expect(db.social.snapshots('instagram')).toHaveLength(0);
+    expect(db.social.snapshots('linkedin')).toHaveLength(0);
   });
 
-  test('re-seeding does not duplicate accounts or snapshots', () => {
+  test('re-seeding stays empty', () => {
     db = openDb(':memory:');
     seedDatabase(db);
-    const accounts = db.social.accounts().length;
-    const igSnaps = db.social.snapshots('instagram').length;
     seedDatabase(db);
-    expect(db.social.accounts().length).toBe(accounts);
-    expect(db.social.snapshots('instagram').length).toBe(igSnaps);
+    expect(db.social.accounts()).toHaveLength(0);
   });
 });

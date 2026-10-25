@@ -11,14 +11,15 @@ beforeAll(() => {
   process.env.FUNNEL_PROVIDER = 'seed';
 });
 
-describe('API route handlers', () => {
-  test('GET /api/agents returns seeded agents grouped with their department', async () => {
+describe('API route handlers — honest empty states (no demo data)', () => {
+  test('GET /api/agents returns agents grouped with their department', async () => {
     const { GET } = await import('@/app/api/agents/route');
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.agents)).toBe(true);
-    expect(body.agents.length).toBeGreaterThanOrEqual(5);
+    // Only the 13 minimal seed agents
+    expect(body.agents.length).toBe(13);
     expect(body.agents[0]).toHaveProperty('name');
     expect(body.agents[0]).toHaveProperty('departmentId');
   });
@@ -27,48 +28,58 @@ describe('API route handlers', () => {
     const { GET } = await import('@/app/api/departments/route');
     const res = await GET();
     const body = await res.json();
-    expect(body.departments.length).toBeGreaterThanOrEqual(4);
+    // 6 departments in the minimal seed
+    expect(body.departments.length).toBe(6);
     const orders = body.departments.map((d: { order: number }) => d.order);
     expect([...orders].sort((a: number, b: number) => a - b)).toEqual(orders);
   });
 
-  test('GET /api/tools returns the integrations grid', async () => {
+  test('GET /api/tools returns empty integrations grid (no demo tools)', async () => {
     const { GET } = await import('@/app/api/tools/route');
     const res = await GET();
     const body = await res.json();
-    expect(body.tools.length).toBeGreaterThanOrEqual(8);
+    expect(body.tools).toHaveLength(0);
   });
 
   test('POST /api/agents/[id]/run executes a real agent and persists the run', async () => {
     const { POST } = await import('@/app/api/agents/[id]/run/route');
-    const res = await POST(new Request('http://localhost/api/agents/data-agent/run', { method: 'POST' }), {
-      params: { id: 'data-agent' },
+    const res = await POST(new Request('http://localhost/api/agents/conductor/run', { method: 'POST' }), {
+      params: { id: 'conductor' },
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.run.agentId).toBe('data-agent');
+    expect(body.run.agentId).toBe('conductor');
     expect(typeof body.run.ok).toBe('boolean');
     expect(body.run.summary.length).toBeGreaterThan(0);
   });
 
-  test('GET /api/roadmap returns items grouped by quarter', async () => {
+  test('GET /api/roadmap returns empty quarters (no demo roadmap)', async () => {
     const { GET } = await import('@/app/api/roadmap/route');
     const res = await GET();
     const body = await res.json();
-    expect(body.quarters.length).toBeGreaterThanOrEqual(3);
-    expect(body.quarters[0]).toHaveProperty('quarter');
-    expect(body.quarters[0]).toHaveProperty('items');
+    expect(body.quarters).toHaveLength(0);
   });
 
-  test('GET /api/metrics returns analytics metrics', async () => {
+  test('GET /api/metrics returns 4 live metrics (some may be null if keys missing)', async () => {
     const { GET } = await import('@/app/api/metrics/route');
     const res = await GET();
     const body = await res.json();
-    expect(body.metrics.length).toBeGreaterThanOrEqual(4);
+    expect(Array.isArray(body.metrics)).toBe(true);
+    expect(body.metrics.length).toBe(4);
+    // All 4 metrics present; some may be live=false if keys not configured
+    const keys = body.metrics.map((m: { key: string }) => m.key).sort();
+    // The liveMetrics returns: brain_pages, stripe_available, unread_total, agent_runs
+    expect(keys).toEqual(['agent_runs', 'brain_pages', 'stripe_available', 'unread_total']);
+    for (const m of body.metrics) {
+      expect(typeof m.live).toBe('boolean');
+      if (m.live) expect(typeof m.value).toBe('number');
+      else expect(m.value).toBeNull();
+    }
   });
 
   test('POST /api/agents/broadcast fans a message out to every agent', async () => {
     const { POST } = await import('@/app/api/agents/broadcast/route');
+    const { realAgents } = await import('@/lib/agents/real');
     const res = await POST(
       new Request('http://localhost/api/agents/broadcast', {
         method: 'POST',
@@ -78,8 +89,8 @@ describe('API route handlers', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.broadcast.message).toBe('status report, everyone');
-    const { realAgents } = await import('@/lib/agents/real');
-    expect(body.broadcast.replies).toHaveLength(realAgents.length);
+    // Broadcast runs all realAgents (32), not just seeded agents
+    expect(body.broadcast.replies.length).toBe(realAgents.length);
     for (const reply of body.broadcast.replies) {
       expect(typeof reply.ok).toBe('boolean');
       expect(reply.reply.length).toBeGreaterThan(0);
@@ -107,48 +118,45 @@ describe('API route handlers', () => {
     expect(body.doctor.detail.length).toBeGreaterThan(0);
   });
 
-  test('GET /api/social returns the growth dashboard with all five platforms', async () => {
+  test('GET /api/social returns empty growth dashboard (no demo data)', async () => {
     const { GET } = await import('@/app/api/social/route');
     const res = await GET();
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.platforms.map((p: { platform: string }) => p.platform)).toEqual([
-      'instagram',
-      'tiktok',
-      'twitter',
-      'youtube',
-      'linkedin',
-    ]);
-    expect(body.totalFollowers).toBeGreaterThan(0);
-    expect(body.platforms[0].growth).toHaveProperty('d7');
+    // No seeded social accounts — empty platforms
+    expect(body.platforms).toHaveLength(0);
+    expect(body.totalFollowers).toBe(0);
+    expect(body.totalDms).toBe(0);
+    expect(body.emailList.subscribers).toBeNull(); // no data = null
   });
 
-  test('GET /api/social includes email list, DM total, and monthly growth', async () => {
+  test('GET /api/social includes empty email list and DM total', async () => {
     const { GET } = await import('@/app/api/social/route');
     const res = await GET();
     const body = await res.json();
-    expect(body.emailList).toBeDefined();
-    expect(body.emailList.subscribers).toBeGreaterThan(0);
-    expect(typeof body.totalDms).toBe('number');
-    expect(body.totalDms).toBeGreaterThan(0);
-    expect('monthlyGrowthPct' in body).toBe(true); // number | null, both valid
+    expect(body.emailList.subscribers).toBeNull(); // no data = null
+    expect(body.totalDms).toBe(0);
+    expect('monthlyGrowthPct' in body).toBe(true);
   });
 
-  test('GET /api/social/series returns labelled audience + DM series with ranges', async () => {
+  test('GET /api/social/series returns empty series with ranges', async () => {
     const { GET } = await import('@/app/api/social/series/route');
     const aud = await GET(new Request('http://localhost/api/social/series?metric=audience'));
     expect(aud.status).toBe(200);
     const audBody = await aud.json();
     expect(audBody.metric).toBe('audience');
     expect(audBody.ranges).toEqual([7, 30, 60, 'all']);
-    expect(Array.isArray(audBody.series)).toBe(true);
-    expect(audBody.series.some((s: { key: string }) => s.key === 'all')).toBe(true);
-    expect(audBody.series.find((s: { key: string }) => s.key === 'all').points.length).toBeGreaterThan(0);
+    // The 'all' series is always returned (with empty points when no data)
+    expect(audBody.series).toHaveLength(1);
+    expect(audBody.series[0].key).toBe('all');
+    expect(audBody.series[0].points).toHaveLength(0);
 
     const dms = await GET(new Request('http://localhost/api/social/series?metric=dms'));
     const dmsBody = await dms.json();
     expect(dmsBody.metric).toBe('dms');
-    expect(dmsBody.series[0].points.length).toBeGreaterThan(0);
+    expect(dmsBody.series).toHaveLength(1);
+    expect(dmsBody.series[0].key).toBe('total');
+    expect(dmsBody.series[0].points).toHaveLength(0);
   });
 
   test('GET /api/social/series rejects an unknown metric', async () => {
@@ -157,30 +165,22 @@ describe('API route handlers', () => {
     expect(res.status).toBe(400);
   });
 
-  test('GET /api/funnel returns a validated summary + journeys', async () => {
+  test('GET /api/funnel returns empty summary + journeys (no demo data)', async () => {
     const { GET } = await import('@/app/api/funnel/route');
     const res = await GET(new Request('http://localhost/api/funnel'));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.summary.clients).toBeGreaterThanOrEqual(10);
-    expect(body.summary.stages.map((s: { stage: string }) => s.stage)).toEqual([
-      'first_touch', 'engaged', 'nurtured', 'opted_in', 'converted',
-    ]);
-    expect(body.journeys.length).toBe(body.summary.clients);
-    expect(body.journeys[0].touches.length).toBeGreaterThanOrEqual(4);
-    // leads quiet past 90 days decay out of journeys into the archive
-    expect(Array.isArray(body.archived)).toBe(true);
-    expect(body.archived.length).toBeGreaterThanOrEqual(1);
-    expect(body.journeys.map((j: { id: string }) => j.id)).not.toContain(body.archived[0].id);
+    expect(body.summary.clients).toBe(0);
+    expect(body.journeys).toHaveLength(0);
+    expect(body.archived).toHaveLength(0);
   });
 
-  test('GET /api/funnel?venture= filters journeys to one venture', async () => {
+  test('GET /api/funnel?venture= returns empty journeys', async () => {
     const { GET } = await import('@/app/api/funnel/route');
     const res = await GET(new Request('http://localhost/api/funnel?venture=vantage'));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.journeys.length).toBeGreaterThan(0);
-    expect(body.journeys.every((j: { venture: string }) => j.venture === 'vantage')).toBe(true);
+    expect(body.journeys).toHaveLength(0);
   });
 
   test('GET /api/funnel rejects an unknown venture', async () => {
@@ -189,15 +189,17 @@ describe('API route handlers', () => {
     expect(res.status).toBe(400);
   });
 
-  test('GET /api/social exposes audience + DM growth across ranges', async () => {
+  test('GET /api/social exposes empty audience + DM growth across ranges', async () => {
     const { GET } = await import('@/app/api/social/route');
     const res = await GET();
     const body = await res.json();
     for (const key of ['d7', 'd30', 'd60', 'allTime']) {
       expect(key in body.audienceGrowth).toBe(true);
       expect(key in body.dmGrowth).toBe(true);
+      expect(body.audienceGrowth[key]).toBeNull(); // null = no data
+      expect(body.dmGrowth[key]).toBeNull();
     }
-    expect(body.audienceTotal).toBeGreaterThan(0);
+    expect(body.audienceTotal).toBe(0);
   });
 
   test('POST /api/social/posts enqueues a post; GET lists the queue', async () => {
@@ -229,16 +231,12 @@ describe('API route handlers', () => {
     expect(bad.status).toBe(400);
   });
 
-  test('GET /api/social/[platform] returns one platform’s analytics', async () => {
+  test('GET /api/social/[platform] 404s for untracked platform (no seed accounts)', async () => {
     const { GET } = await import('@/app/api/social/[platform]/route');
     const res = await GET(new Request('http://localhost/api/social/instagram'), {
       params: { platform: 'instagram' },
     });
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.account.platform).toBe('instagram');
-    expect(Array.isArray(body.snapshots)).toBe(true);
-    expect(body.snapshots.length).toBeGreaterThanOrEqual(1);
+    expect(res.status).toBe(404);
   });
 
   test('GET /api/social/[platform] 404s for an untracked platform', async () => {

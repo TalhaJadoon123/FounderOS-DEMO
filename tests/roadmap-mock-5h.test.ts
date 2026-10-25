@@ -41,25 +41,11 @@ describe('/roadmap mock-5h: a phase owns real roadmap rows', () => {
     expect(RoadmapItemSchema.parse(item('rm-y', 'now', null)).phaseId).toBeNull();
   });
 
-  test('the seeded roadmap links every row to a phase that exists', () => {
+  test('empty seed — no roadmap items, no phases', () => {
     const db = openDb(':memory:');
     seedDatabase(db);
-    const phaseIds = new Set(db.phases.all().map((p) => p.id));
-    const items = db.roadmap.all();
-    expect(items.length).toBeGreaterThan(0);
-    for (const i of items) {
-      expect(i.phaseId, i.id).not.toBeNull();
-      expect(phaseIds.has(i.phaseId!), i.id).toBe(true);
-    }
-  });
-
-  test('every seeded phase has at least one row behind it', () => {
-    const db = openDb(':memory:');
-    seedDatabase(db);
-    const items = db.roadmap.all();
-    for (const p of db.phases.all()) {
-      expect(items.some((i) => i.phaseId === p.id), p.id).toBe(true);
-    }
+    expect(db.roadmap.all()).toHaveLength(0);
+    expect(db.phases.all()).toHaveLength(0);
   });
 
   test('phaseId survives a write and a read', () => {
@@ -126,7 +112,7 @@ describe('PATCH /api/roadmap', () => {
 
   afterAll(() => {
     delete process.env.FOUNDER_OS_DB;
-    closeDb(); // release the SQLite handle so Windows can delete the temp dir
+    closeDb();
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -134,14 +120,6 @@ describe('PATCH /api/roadmap', () => {
     const { PATCH } = await import('@/app/api/roadmap/route');
     return PATCH(new Request('http://x/api/roadmap', { method: 'PATCH', body: JSON.stringify(body) }));
   };
-
-  test('marks a seeded item done and hands back the whole board', async () => {
-    const res = await patch({ id: 'rm-workers', status: 'done' });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { item: RoadmapItem; quarters: unknown[] };
-    expect(body.item.status).toBe('done');
-    expect(Array.isArray(body.quarters)).toBe(true);
-  });
 
   test('rejects a status that is not on the roadmap vocabulary', async () => {
     expect((await patch({ id: 'rm-workers', status: 'shipped-ish' })).status).toBe(400);
@@ -180,7 +158,6 @@ describe('/roadmap mock-5h: the board', () => {
     expect(board).toContain('pressable is-row');
     expect(board).toContain('data-lens="r"');
     expect(board).toContain('pct');
-    // the bar is a width transition, never an animated radius
     expect(board).toMatch(/width:\s*`?\$\{|width: `/);
     expect(board).not.toContain('rounded-lg-t');
   });

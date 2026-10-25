@@ -107,71 +107,19 @@ describe('funnel repo', () => {
   });
 });
 
-describe('funnel seed', () => {
-  test('seeds 4–5 touch journeys for both ventures, converted rows carry product + amount', () => {
+describe('funnel seed — no demo data', () => {
+  test('seeds zero journeys — funnel starts empty', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const all = db.funnel.journeys();
-    expect(all.length).toBeGreaterThanOrEqual(10);
+    expect(all).toHaveLength(0);
+  });
 
-    for (const j of all) {
-      FunnelJourneySchema.parse(j);
-      expect(j.touches.length).toBeGreaterThanOrEqual(4);
-      expect(j.touches.length).toBeLessThanOrEqual(5);
-      // touches are a contiguous 1..n sequence in chronological order
-      expect(j.touches.map((t) => t.seq)).toEqual(j.touches.map((_, i) => i + 1));
-      expect(j.touches[0].stage).toBe('first_touch');
-    }
-
-    // both ventures represented
-    expect(new Set(all.map((j) => j.venture))).toEqual(new Set(['vantage', 'launchpad-cohort']));
-
-    // both acquisition lanes represented, with honest intended sources
-    const firsts = all.map((j) => j.touches[0]);
-    expect(firsts.some((t) => t.channel === 'organic' && t.source === 'trakyo')).toBe(true);
-    expect(firsts.some((t) => t.channel === 'ads' && t.source === 'meta-ads')).toBe(true);
-
-    // converted journeys end on a converted touch and carry the offer + amount
-    const converted = all.filter((j) => j.status === 'converted');
-    expect(converted.length).toBeGreaterThanOrEqual(4);
-    for (const j of converted) {
-      expect(j.touches.at(-1)?.stage).toBe('converted');
-      expect(j.product).toBeTruthy();
-      expect(j.amountUsd ?? 0).toBeGreaterThan(0);
-    }
-
-    // some journeys are honestly mid-funnel (not everyone converts)
-    expect(all.some((j) => j.status !== 'converted')).toBe(true);
-
-    // one seeded lead has decayed past 90 quiet days so the archive tab demos
-    const split = splitFunnelJourneys(all, new Date());
-    expect(split.archived.length).toBeGreaterThanOrEqual(1);
-    expect(split.active.length).toBeGreaterThanOrEqual(10);
-
-    // and one active lead sits mid-fade so the decay rendering always demos
-    const decays = funnelSpaceModel(split.active, new Date()).map((n) => n.decay);
-    expect(decays.some((d) => d > 0.3 && d < 1)).toBe(true);
-
-    // relationship + likelihood seeded for every client
-    for (const j of all) {
-      expect(['cold', 'warm', 'hot']).toContain(j.relationship);
-      expect(j.likelihood).toBeGreaterThanOrEqual(0);
-      expect(j.likelihood).toBeLessThanOrEqual(100);
-    }
-
-    // touch dates are relative to today, so stall states stay meaningful:
-    // at least one non-converted lead is stalled (>7d quiet) and one is active
-    const now = new Date();
-    const metas = all.filter((j) => j.status !== 'converted').map((j) => journeyMeta(j, now));
-    expect(metas.some((m) => m.state === 'stalled')).toBe(true);
-    expect(metas.some((m) => m.state === 'active')).toBe(true);
-    // and the freshest touch is genuinely recent (not a fixed 2026-06 date)
-    const freshest = Math.min(...metas.map((m) => m.daysSinceLastTouch));
-    expect(freshest).toBeLessThanOrEqual(3);
-
-    // re-seeding is idempotent
+  test('re-seeding stays empty', () => {
+    db = openDb(':memory:');
     seedDatabase(db);
-    expect(db.funnel.journeys()).toHaveLength(all.length);
+    seedDatabase(db);
+    expect(db.funnel.journeys()).toHaveLength(0);
   });
 });
 
@@ -228,7 +176,6 @@ describe('funnelSummary', () => {
     const byStage = Object.fromEntries(summary.stages.map((s) => [s.stage, s]));
     expect(byStage.first_touch).toMatchObject({ total: 4, organic: 2, ads: 2, conversionFromPrev: null });
     expect(byStage.engaged).toMatchObject({ total: 4, conversionFromPrev: 100 });
-    // a converted/opted_in journey progressed past nurtured even if it skipped the touch
     expect(byStage.nurtured).toMatchObject({ total: 3, conversionFromPrev: 75 });
     expect(byStage.opted_in).toMatchObject({ total: 3, organic: 2, ads: 1, conversionFromPrev: 100 });
     expect(byStage.converted).toMatchObject({ total: 2, organic: 1, ads: 1, conversionFromPrev: 66.7 });
@@ -306,7 +253,7 @@ describe('journeyMeta', () => {
     const now = new Date('2026-07-02T12:00:00Z');
     expect(journeyMeta(journeyLastTouchedAt('engaged', daysAgoIso(now, 91)), now).state).toBe('decayed');
     expect(journeyMeta(journeyLastTouchedAt('first_touch', daysAgoIso(now, 120)), now).state).toBe('decayed');
-    expect(journeyMeta(journeyLastTouchedAt('engaged', daysAgoIso(now, 90)), now).state).toBe('stalled'); // exactly 90 is not decayed yet
+    expect(journeyMeta(journeyLastTouchedAt('engaged', daysAgoIso(now, 90)), now).state).toBe('stalled');
     expect(journeyMeta(journeyLastTouchedAt('converted', daysAgoIso(now, 200)), now).state).toBe('converted');
   });
 
@@ -485,15 +432,14 @@ describe('attentionQueue — what to act on today (AC55)', () => {
   test('pushNow = hot actives, freshest movement first, capped at 4', () => {
     const q = attentionQueue(
       [
-        lead('cool', { likelihood: 40 }, 2), // not hot — out
+        lead('cool', { likelihood: 40 }, 2),
         lead('hot-fresh', { likelihood: 90 }, 1),
         lead('hot-later', { likelihood: 80 }, 5),
         lead('hot-a', { likelihood: 85 }, 2),
         lead('hot-b', { likelihood: 75 }, 3),
         lead('hot-c', { likelihood: 71 }, 4),
-        lead('won', { likelihood: 95, status: 'converted' }, 1), // converted — out
-        lead('dying', { likelihood: 95 }, 30), // decaying — belongs to saveNow
-        // first_touch never stalls, but a fading lead is a save, not a push
+        lead('won', { likelihood: 95, status: 'converted' }, 1),
+        lead('dying', { likelihood: 95 }, 30),
         lead('fading-inbound', { likelihood: 95, status: 'first_touch' }, 30),
       ],
       NOW,
@@ -504,13 +450,13 @@ describe('attentionQueue — what to act on today (AC55)', () => {
   test('saveNow = decaying leads, highest likelihood first, capped at 4', () => {
     const q = attentionQueue(
       [
-        lead('fine', { likelihood: 90 }, 3), // active — not dying
+        lead('fine', { likelihood: 90 }, 3),
         lead('save-1', { likelihood: 88 }, 25),
         lead('save-2', { likelihood: 70 }, 40),
         lead('save-3', { likelihood: 55 }, 30),
         lead('save-4', { likelihood: 50 }, 22),
         lead('save-5', { likelihood: 20 }, 35),
-        lead('gone', { likelihood: 99 }, 120), // decayed → archive, not the queue
+        lead('gone', { likelihood: 99 }, 120),
       ],
       NOW,
     );
@@ -523,14 +469,6 @@ describe('attentionQueue — what to act on today (AC55)', () => {
     expect(q.saveNow.map((j) => j.id)).toEqual(['fading-inbound']);
   });
 
-  /**
-   * The band between the rails (found in FounderOS-DEMO #3, 2026-08-06).
-   * A lead quiet past STALL_DAYS (7) runs red on the board, but the fade
-   * does not begin until DECAY_FADE_START (21). saveNow used to test only
-   * "is it fading", so days 8-21 landed in neither rail: flagged as a
-   * problem on the board, absent from the list of what to do about it.
-   * Three real seeded leads sat in that hole.
-   */
   test('a stalled lead that is not fading yet is still a save, not silence', () => {
     const q = attentionQueue([lead('late-not-fading', { likelihood: 60 }, 15)], NOW);
     expect(q.saveNow.map((j) => j.id)).toEqual(['late-not-fading']);
@@ -566,10 +504,8 @@ describe('orbitSpread — crowded hubs breathe wider', () => {
     const crowd = orbitSpread(105);
     expect(crowd).toBeGreaterThan(1.5);
     expect(crowd).toBeLessThanOrEqual(2.4);
-    // monotonic and capped
     expect(orbitSpread(50)).toBeLessThan(crowd);
     expect(orbitSpread(1000)).toBe(2.4);
-    // safe on empty clusters
     expect(orbitSpread(0)).toBe(1);
   });
 });
@@ -587,9 +523,7 @@ describe('/funnel mock-3c polish', () => {
     expect(page).toContain("label: 'Flow'");
     expect(page).toContain("label: 'Radial'");
     expect(page).toMatch(/Archive \(\{archived\.length\}\)/);
-    // chips, not text links: the archive control carries the chip frame
     expect(page).toMatch(/rounded-ctl border[\s\S]{0,600}Archive \(/);
-    // the standalone "live funnel" text link is retired
     expect(page).not.toContain('live funnel');
   });
 

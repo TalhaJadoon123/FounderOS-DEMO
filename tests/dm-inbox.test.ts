@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { dmThreads } from '@/lib/social';
@@ -47,16 +47,10 @@ describe('social.dmMessages', () => {
     expect(db.social.dmMessages('instagram').map((m) => m.id)).toEqual(['ig']);
   });
 
-  test('seed ships a realistic multi-conversation Instagram DM inbox', () => {
+  test('no seeded DM messages (empty inbox)', () => {
     db = openDb(':memory:');
     seedDatabase(db);
-    const msgs = db.social.dmMessages('instagram');
-    expect(msgs.length).toBeGreaterThan(3);
-    expect(msgs.every((m) => m.platform === 'instagram')).toBe(true);
-    // more than one conversation, and both inbound + outbound present
-    expect(new Set(msgs.map((m) => m.subscriberId)).size).toBeGreaterThan(1);
-    expect(msgs.some((m) => m.direction === 'in')).toBe(true);
-    expect(msgs.some((m) => m.direction === 'out')).toBe(true);
+    expect(db.social.dmMessages('instagram')).toHaveLength(0);
   });
 });
 
@@ -83,4 +77,11 @@ describe('dmThreads', () => {
     expect(byId['X'].unreplied).toBe(true);
     expect(byId['Y'].unreplied).toBe(false);
   });
+
+  test('no seeded DM threads', () => {
+    db = openDb(':memory:');
+    seedDatabase(db);
+    expect(dmThreads(db)).toHaveLength(0);
+  });
 });
+

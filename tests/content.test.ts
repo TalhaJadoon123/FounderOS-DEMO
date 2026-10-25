@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { contentAgents } from '@/lib/content';
@@ -11,14 +11,14 @@ describe('contentAgents', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const crew = contentAgents(db.agents.all());
-    expect(crew[0].id).toBe('social-agent');
+    // Minimal seed: content-agent + social-agent (both lead tier, sorted by name)
+    expect(crew[0].id).toBe('content-agent');
     const ids = crew.map((a) => a.id);
-    for (const id of ['social-agent', 'postly-publisher', 'adsmith-creative', 'reelkit-editor', 'renderly-creative', 'dmflow-mcp']) {
-      expect(ids).toContain(id);
-    }
+    expect(ids).toContain('social-agent');
+    expect(ids).toContain('content-agent');
   });
 
-  test('only the content pillar — excludes other departments', () => {
+  test('only the content pillar â€” excludes other departments', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const crew = contentAgents(db.agents.all());
@@ -33,6 +33,7 @@ describe('contentAgents', () => {
     const a = contentAgents(db.agents.all()).map((x) => x.id);
     const b = contentAgents(db.agents.all()).map((x) => x.id);
     expect(a).toEqual(b);
-    expect(a.length).toBeGreaterThanOrEqual(5);
+    expect(a.length).toBe(2); // social-agent + content-agent
   });
 });
+

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
@@ -16,33 +16,24 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
  * 2. The sidebar footer hardcoded "localhost:4100", which is a lie whenever
  *    the OS is served from the host, and it was pinned nowrap so it overflowed
  *    the rail and got clipped.
+ * 
+ * NO seeded ManyChat agent or tool â€” create from the OS.
  */
 describe('ManyChat reads live, not planned', () => {
-  let db: FounderDb;
-
-  test('the ManyChat agent is not marked planned', () => {
-    db = openDb(':memory:');
-    try {
-      seedDatabase(db);
-      const agent = db.agents.all().find((a) => a.id === 'dmflow-mcp');
-      expect(agent, 'the ManyChat MCP agent should exist').toBeDefined();
-      expect(agent!.status).not.toBe('planned');
-    } finally {
-      db.close();
-    }
+  test('no ManyChat agent is seeded', () => {
+    const db = openDb(':memory:');
+    seedDatabase(db);
+    const agent = db.agents.all().find((a) => a.id === 'dmflow-mcp');
+    expect(agent).toBeUndefined();
+    db.close();
   });
 
-  test('the ManyChat tool reads connected, and stops claiming it needs a key', () => {
-    db = openDb(':memory:');
-    try {
-      seedDatabase(db);
-      const tool = db.tools.all().find((t) => t.id === 'tool-dmflow');
-      expect(tool, 'the ManyChat tool should exist').toBeDefined();
-      expect(tool!.status).toBe('connected');
-      expect(tool!.description).not.toMatch(/needs MANYCHAT_API_KEY/i);
-    } finally {
-      db.close();
-    }
+  test('no ManyChat tool is seeded', () => {
+    const db = openDb(':memory:');
+    seedDatabase(db);
+    const tool = db.tools.all().find((t) => t.id === 'tool-dmflow');
+    expect(tool).toBeUndefined();
+    db.close();
   });
 });
 
@@ -50,7 +41,7 @@ describe('sidebar footer tells the truth about where it is running', () => {
   const sidebar = read('components/Sidebar.tsx');
 
   test('the host is read at runtime, not hardcoded to localhost', () => {
-    expect(sidebar).not.toContain('localhost:4100 · sqlite · real agents');
+    expect(sidebar).not.toContain('localhost:4100 Â· sqlite Â· real agents');
     expect(sidebar).toContain('location.host');
   });
 
@@ -62,3 +53,4 @@ describe('sidebar footer tells the truth about where it is running', () => {
     expect(line).not.toContain('whitespace-nowrap');
   });
 });
+

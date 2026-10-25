@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { demoMemoryGraph } from '@/lib/memory-core';
@@ -9,7 +9,7 @@ import { demoMemoryGraph } from '@/lib/memory-core';
  * health readouts (pillar health, doctor, storage, pipeline, query path) live
  * on /doctor so the graph tab stays one uninterrupted view.
  *
- * The memory core at the centre is the part a fork cannot inherit — it is
+ * The memory core at the centre is the part a fork cannot inherit â€” it is
  * distilled from a markdown store on disk, which no forker has. Without a
  * stand-in the centre renders as a bare dot and the whole graph reads empty,
  * so the fallback is load-bearing here, not decorative.
@@ -61,7 +61,7 @@ describe('/doctor keeps the health readouts', () => {
   });
 });
 
-describe('demoMemoryGraph — the centre a fork actually sees', () => {
+describe('demoMemoryGraph â€” the centre a fork actually sees', () => {
   const g = demoMemoryGraph();
 
   test('is a populated constellation, not an empty core', () => {
@@ -110,7 +110,7 @@ describe('demoMemoryGraph — the centre a fork actually sees', () => {
 /**
  * The graph is the piece this repo is forked for, so it must read as a generic
  * business template rather than one specific operator's stack. Ubiquitous SaaS
- * (Slack, Notion, Stripe) is deliberately kept — it makes the template useful.
+ * (Slack, Notion, Stripe) is deliberately kept â€” it makes the template useful.
  * The connector modules under lib/connectors keep their real vendor names too;
  * those are a feature. This guards the SEEDED ORG the graph is built from.
  */
@@ -135,3 +135,4 @@ describe('the knowledge graph is a blank canvas', () => {
     expect(g.nodes.length).toBeGreaterThan(30);
   });
 });
+

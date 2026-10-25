@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -28,21 +28,17 @@ function docsFor(d: FounderDb) {
   });
 }
 
-describe('buildBrainDocs', () => {
-  test('one doc per agent, sop, tool, person and pillar', () => {
+describe('buildBrainDocs â€” empty seed (no demo data)', () => {
+  test('one doc per agent and pillar (no people, sops, tools)', () => {
     const d = seeded();
     const docs = docsFor(d);
     const paths = new Set(docs.map((x) => x.path));
+    // Only 13 agents + 6 departments (pillars) are seeded
     expect(docs.filter((x) => x.path.startsWith('agents/')).length).toBe(d.agents.all().length);
-    expect(docs.filter((x) => x.path.startsWith('sops/')).length).toBe(d.sopTasks.all().length);
-    expect(docs.filter((x) => x.path.startsWith('tools/')).length).toBe(d.tools.all().length);
-    expect(docs.filter((x) => x.path.startsWith('people/')).length).toBe(d.people.all().length);
+    expect(docs.filter((x) => x.path.startsWith('sops/')).length).toBe(0);
+    expect(docs.filter((x) => x.path.startsWith('tools/')).length).toBe(0);
+    expect(docs.filter((x) => x.path.startsWith('people/')).length).toBe(0);
     expect(docs.filter((x) => x.path.startsWith('org/pillar-')).length).toBe(d.departments.all().length);
-    expect(paths.has('agents/gmail-worker.md')).toBe(true);
-    expect(paths.has('sops/sop-gmail-worker.md')).toBe(true);
-    expect(paths.has('tools/imap.md')).toBe(true);
-    expect(paths.has('people/person-marco.md')).toBe(true);
-    expect(paths.has('org/pillar-clients.md')).toBe(true);
   });
 
   test('every doc carries the generated marker in frontmatter', () => {
@@ -52,38 +48,38 @@ describe('buildBrainDocs', () => {
 
   test('an agent doc holds its charter, SOP instructions and wikilinked tools', () => {
     const docs = docsFor(seeded());
-    const gmail = docs.find((x) => x.path === 'agents/gmail-worker.md')!.content;
-    expect(gmail).toContain('IMAP Inboxes');
-    expect(gmail).toContain('Triage the four Gmail inboxes');
-    expect(gmail).toContain('Classify each thread');
-    expect(gmail).toContain('[[imap]]');
-    expect(gmail).toContain('[[comms-agent]]'); // reports to
-    expect(gmail).toContain('[[pillar-communications]]');
+    const conductor = docs.find((x) => x.path === 'agents/conductor.md')!.content;
+    expect(conductor).toContain('Broadcast & Orchestration');
+    expect(conductor).toContain('fan-out runtime');
+    expect(conductor).toContain('[[clawline]]');
+    expect(conductor).toContain('[[tmux]]');
+    expect(conductor).toContain('[[pillar-tech]]');
   });
 
-  test('a SOP doc is built out: purpose, owner, trigger, steps, done, escalation', () => {
+  test('no SOP docs when no sopTasks seeded', () => {
     const docs = docsFor(seeded());
-    const sop = docs.find((x) => x.path === 'sops/sop-client-onboarding.md')!.content;
-    for (const section of ['## Purpose', '## Owner', '## Trigger', '## Steps', '## Definition of done', '## Escalation']) {
-      expect(sop, `missing ${section}`).toContain(section);
-    }
-    expect(sop).toContain('closed-won');
-    expect(sop).toContain('[[client-onboarding]]');
+    const sopPaths = docs.filter((x) => x.path.startsWith('sops/'));
+    expect(sopPaths).toHaveLength(0);
   });
 
-  test('a tool doc lists who uses it, wikilinked', () => {
+  test('no tool docs when no tools seeded', () => {
     const docs = docsFor(seeded());
-    const ledger = docs.find((x) => x.path === 'tools/ledger.md')!.content;
-    expect(ledger).toContain('[[sales-agent]]');
-    expect(ledger).toContain('[[person-marco]]');
+    const toolPaths = docs.filter((x) => x.path.startsWith('tools/'));
+    expect(toolPaths).toHaveLength(0);
   });
 
-  test('a pillar doc rosters its workers and SOPs', () => {
+  test('no people docs when no people seeded', () => {
     const docs = docsFor(seeded());
-    const clients = docs.find((x) => x.path === 'org/pillar-clients.md')!.content;
-    expect(clients).toContain('[[client-roster]]');
-    expect(clients).toContain('[[person-sasha]]');
-    expect(clients).toContain('[[sop-client-onboarding]]');
+    const peoplePaths = docs.filter((x) => x.path.startsWith('people/'));
+    expect(peoplePaths).toHaveLength(0);
+  });
+
+  test('a pillar doc rosters its workers (agents)', () => {
+    const docs = docsFor(seeded());
+    const tech = docs.find((x) => x.path === 'org/pillar-tech.md')!.content;
+    // Tech department only has the conductor in minimal seed
+    expect(tech).toContain('[[conductor]]');
+    expect(tech).toContain('No SOPs yet.');
   });
 
   test('deterministic output', () => {
@@ -92,23 +88,26 @@ describe('buildBrainDocs', () => {
   });
 });
 
-describe('writeBrainDocs', () => {
+describe('writeBrainDocs â€” empty seed', () => {
   test('writes files, is idempotent, and never clobbers a non-generated file', () => {
     const d = seeded();
     const docs = docsFor(d);
     const dir = mkdtempSync(path.join(tmpdir(), 'brain-docs-'));
     const first = writeBrainDocs(docs, dir);
     expect(first.written).toBeGreaterThan(0);
-    expect(existsSync(path.join(dir, 'agents', 'gmail-worker.md'))).toBe(true);
+    expect(existsSync(path.join(dir, 'agents', 'conductor.md'))).toBe(true);
 
     // hand-edited (non-generated) file must be left alone
-    const handmade = path.join(dir, 'agents', 'gmail-worker.md');
+    const handmade = path.join(dir, 'agents', 'conductor.md');
     writeFileSync(handmade, '# my own notes, no marker');
     const second = writeBrainDocs(docs, dir);
     expect(readFileSync(handmade, 'utf8')).toBe('# my own notes, no marker');
     expect(second.skipped).toBeGreaterThan(0);
 
-    // everything else regenerated cleanly
-    expect(readdirSync(path.join(dir, 'sops')).length).toBe(d.sopTasks.all().length);
+    // only agents and pillars written (no sops, tools, people directories exist)
+    expect(existsSync(path.join(dir, 'sops'))).toBe(false);
+    expect(existsSync(path.join(dir, 'tools'))).toBe(false);
+    expect(existsSync(path.join(dir, 'people'))).toBe(false);
   });
 });
+

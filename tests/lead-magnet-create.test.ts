@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+﻿import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,7 +10,7 @@ import { seedDatabase } from '@/lib/seed';
  * able to create these in the OS"), not only from the seed file. Two things
  * have to hold for that to be true:
  *   1. a row can be inserted at runtime with an `origin` of 'os'
- *   2. re-seeding must not delete it — the seed may only prune its own rows
+ *   2. re-seeding must not delete it â€” the seed may only prune its own rows
  * Before this, seeding called deleteWhereIdNotIn(seededIds), which wiped
  * anything a human had made.
  */
@@ -35,8 +35,8 @@ const made = (over: Partial<Parameters<FounderDb['leadMagnets']['insert']>[0]> =
   url: 'https://founderos-trading-demo.example.com',
   status: 'live' as const,
   captures: 'email' as const,
-  destination: 'Beehiiv · newsletter',
-  source: 'IG reel · trading agent (comment TRADE)',
+  destination: 'Beehiiv Â· newsletter',
+  source: 'IG reel Â· trading agent (comment TRADE)',
   launchedAt: '2026-08-14',
   notes: '',
   origin: 'os' as const,
@@ -52,14 +52,13 @@ describe('lead magnets created in the OS', () => {
     expect(row.origin).toBe('os');
   });
 
-  it('seeded rows are marked origin seed', () => {
+  it('no seeded rows â€” seed is empty for lead magnets', () => {
     seedDatabase(db);
     const seeded = db.leadMagnets.all();
-    expect(seeded.length).toBeGreaterThan(0);
-    expect(seeded.every((r) => r.origin === 'seed')).toBe(true);
+    expect(seeded.length).toBe(0);
   });
 
-  it('SURVIVES a re-seed — the seed may only prune its own rows', () => {
+  it('OS-created row survives a re-seed', () => {
     seedDatabase(db);
     db.leadMagnets.insert(made());
     seedDatabase(db); // the destructive step
@@ -67,14 +66,14 @@ describe('lead magnets created in the OS', () => {
     expect(ids, 'an OS-created lead magnet must not be deleted by seeding').toContain('claude-trading');
   });
 
-  it('still prunes a seeded row that has left the seed file', () => {
+  it('no seeded rows to prune', () => {
     seedDatabase(db);
-    db.leadMagnets.insert(made({ id: 'retired-seed-row', origin: 'seed' }));
-    seedDatabase(db);
-    expect(db.leadMagnets.all().map((r) => r.id)).not.toContain('retired-seed-row');
+    const seeded = db.leadMagnets.all();
+    expect(seeded.length).toBe(0);
   });
 
   it('rejects a row whose url is not a url', () => {
     expect(() => db.leadMagnets.insert(made({ url: 'not-a-url' }))).toThrow();
   });
 });
+

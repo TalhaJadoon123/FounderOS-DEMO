@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { PERSONAS } from '@/lib/personas-seed';
@@ -7,7 +7,7 @@ import { PersonaSchema } from '@/lib/schemas';
 let db: FounderDb;
 afterEach(() => db?.close());
 
-describe('PERSONAS seed data', () => {
+describe('PERSONAS seed data (reference only â€” not seeded)', () => {
   test('eleven distinct personas, each valid against the schema', () => {
     expect(PERSONAS).toHaveLength(11);
     const ids = new Set(PERSONAS.map((p) => p.id));
@@ -35,16 +35,23 @@ describe('PERSONAS seed data', () => {
   });
 });
 
-describe('personas repo', () => {
-  test('seedDatabase loads all eleven personas, ordered, round-tripped through the repo', () => {
+describe('personas repo â€” no seeded personas (create from OS)', () => {
+  let db: FounderDb;
+  afterEach(() => db?.close());
+
+  test('seedDatabase loads zero personas (not seeded by default)', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const rows = db.personas.all();
-    expect(rows).toHaveLength(11);
-    expect(rows.map((p) => p.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    // JSON columns survive the round-trip
-    const first = rows[0];
-    expect(first.pillars.length).toBe(5);
-    expect(Array.isArray(first.connectors)).toBe(true);
+    expect(rows).toHaveLength(0);
+  });
+
+  test('insert + re-seed is idempotent (empty stays empty)', () => {
+    db = openDb(':memory:');
+    seedDatabase(db);
+    const before = db.personas.all().length;
+    seedDatabase(db);
+    expect(db.personas.all().length).toBe(before);
   });
 });
+

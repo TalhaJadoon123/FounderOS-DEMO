@@ -1,7 +1,8 @@
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+﻿import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+
 
 beforeAll(() => {
   process.env.FOUNDER_OS_DB = path.join(mkdtempSync(path.join(tmpdir(), 'founder-dm-reply-')), 'test.db');
@@ -24,6 +25,9 @@ describe('POST /api/social/dm/reply', () => {
   test('honest 502 and stores nothing when ManyChat is not connected', async () => {
     const { POST } = await import('@/app/api/social/dm/reply/route');
     const { getDb } = await import('@/lib/data');
+    // Create the inbound thread first
+    const db = getDb();
+    db.social.upsertDmMessage({ id: 'm1', platform: 'instagram', subscriberId: 'ig-talha', name: 'Talha', handle: 'Talha', text: 'hi', direction: 'in', tag: null, ts: '2026-07-18T10:00:00.000Z', source: 'seed' });
     const before = getDb().social.dmMessages('instagram').filter((m) => m.direction === 'out').length;
 
     const res = await POST(post({ subscriberId: 'ig-talha', text: 'on it' }));
@@ -40,6 +44,9 @@ describe('POST /api/social/dm/reply', () => {
 
     const { POST } = await import('@/app/api/social/dm/reply/route');
     const { getDb } = await import('@/lib/data');
+    // Create the inbound thread first
+    const db = getDb();
+    db.social.upsertDmMessage({ id: 'm1', platform: 'instagram', subscriberId: 'ig-talha', name: 'Talha', handle: 'Talha', text: 'hi', direction: 'in', tag: null, ts: '2026-07-18T10:00:00.000Z', source: 'seed' });
 
     const res = await POST(post({ subscriberId: 'ig-talha', text: 'here is pricing' }));
     expect(res.status).toBe(200);
@@ -53,3 +60,4 @@ describe('POST /api/social/dm/reply', () => {
     expect(stored?.name).toBe('Talha'); // resolved from the existing thread
   });
 });
+

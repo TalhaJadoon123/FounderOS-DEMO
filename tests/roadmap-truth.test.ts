@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+﻿import { describe, expect, test } from 'vitest';
 import { openDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { currentFocus, groupRoadmapByQuarter } from '@/lib/roadmap';
@@ -17,7 +17,7 @@ const item = (id: string, quarter: string, status: RoadmapItem['status']): Roadm
 /**
  * The home console used to label its focus panel with
  * `groupRoadmapByQuarter(...)[0]`, which is the EARLIEST quarter on record and
- * therefore said "Now · 2026-Q2" forever. Focus follows status, not the
+ * therefore said "Now Â· 2026-Q2" forever. Focus follows status, not the
  * calendar order of the backlog.
  */
 describe('currentFocus', () => {
@@ -49,52 +49,27 @@ describe('currentFocus', () => {
 });
 
 /**
- * Spring cleaning, 2026-09-06: the seeded roadmap had four 2026-Q2 items still
- * flagged "now" that shipped months ago, and three 2026-Q3 items flagged
- * "next" that are running in production. A roadmap that lies is worse than no
- * roadmap.
+ * The seed is now empty â€” no demo roadmap items.
+ * The OS starts with an empty roadmap; create your own items in the OS.
  */
-describe('the seeded roadmap tells the truth', () => {
+describe('empty roadmap seed (no demo data)', () => {
   const db = openDb(':memory:');
   seedDatabase(db);
   const items = db.roadmap.all();
-  const byId = new Map(items.map((i) => [i.id, i]));
 
-  test('everything shipped in 2026-Q2 is marked done', () => {
-    const q2 = items.filter((i) => i.quarter === '2026-Q2');
-    expect(q2.length).toBeGreaterThan(0);
-    expect(q2.every((i) => i.status === 'done')).toBe(true);
+  test('roadmap is empty after seeding', () => {
+    expect(items).toHaveLength(0);
   });
 
-  test('the things that are demonstrably live are not still "next"', () => {
-    // The cron tick runs on the host, the app IS on the host, and the brain
-    // moved to local Ollama embeddings on 2026-08-31.
-    for (const id of ['rm-scheduler', 'rm-host', 'rm-embeddings']) {
-      expect(byId.get(id)?.status, id).toBe('done');
-    }
+  test('currentFocus on empty roadmap returns null', () => {
+    expect(currentFocus(items)).toBeNull();
   });
 
-  test('the retired Notion connector never comes back', () => {
-    expect(items.some((i) => /notion/i.test(i.title))).toBe(false);
-  });
-
-  test('current focus lands in the quarter we are actually in', () => {
-    const focus = currentFocus(items);
-    expect(focus?.quarter).toBe('2026-Q3');
-    expect(focus!.items.length).toBeGreaterThan(0);
-  });
-
-  test('there is still work ahead of us', () => {
-    expect(items.some((i) => i.status === 'next' || i.status === 'later')).toBe(true);
-    expect(groupRoadmapByQuarter(items).map((q) => q.quarter)).toContain('2026-Q4');
+  test('groupRoadmapByQuarter on empty roadmap returns empty', () => {
+    expect(groupRoadmapByQuarter(items)).toHaveLength(0);
   });
 });
 
-/**
- * roadmap_items had no prune path, so a row deleted from lib/seed.ts stayed on
- * the host forever. That is how a retired connector kept its place on the
- * board months after it was removed from the source.
- */
 describe('roadmap rows that leave the seed leave the database', () => {
   test('deleteWhereIdNotIn drops stale rows', () => {
     const db = openDb(':memory:');
@@ -104,10 +79,13 @@ describe('roadmap rows that leave the seed leave the database', () => {
     expect(db.roadmap.all().map((i) => i.id)).toEqual(['rm-keep']);
   });
 
-  test('re-seeding evicts a row that is no longer in the seed', () => {
+  test('re-seeding does not prune roadmap (not structural data)', () => {
     const db = openDb(':memory:');
     db.roadmap.insert(item('rm-creds-notion', '2026-Q2', 'now'));
     seedDatabase(db);
-    expect(db.roadmap.all().some((i) => i.id === 'rm-creds-notion')).toBe(false);
+    // roadmap is not structural data â€” seed doesn't prune it
+    // but since the seed is empty, the item remains (user data)
+    expect(db.roadmap.all().some((i) => i.id === 'rm-creds-notion')).toBe(true);
   });
 });
+

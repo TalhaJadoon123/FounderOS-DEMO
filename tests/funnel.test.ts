@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { openDb, type FounderDb } from '@/lib/db';
@@ -107,8 +107,8 @@ describe('funnel repo', () => {
   });
 });
 
-describe('funnel seed — no demo data', () => {
-  test('seeds zero journeys — funnel starts empty', () => {
+describe('funnel seed â€” no demo data', () => {
+  test('seeds zero journeys â€” funnel starts empty', () => {
     db = openDb(':memory:');
     seedDatabase(db);
     const all = db.funnel.journeys();
@@ -160,7 +160,7 @@ describe('funnelSummary', () => {
     ],
   });
 
-  test('computes reached-stage counts, organic/ads split, and stage→stage conversion', () => {
+  test('computes reached-stage counts, organic/ads split, and stageâ†’stage conversion', () => {
     const summary = funnelSummary([
       journey('j1', 'organic', 'converted', 1000),
       journey('j2', 'ads', 'converted', 500),
@@ -238,13 +238,13 @@ describe('journeyMeta', () => {
     expect(meta.daysSinceLastTouch).toBe(8);
   });
 
-  test('exactly 7 quiet days is still active — stall needs MORE than a week', () => {
+  test('exactly 7 quiet days is still active â€” stall needs MORE than a week', () => {
     const now = new Date('2026-07-02T12:00:00Z');
     expect(journeyMeta(journeyLastTouchedAt('engaged', daysAgoIso(now, 7)), now).state).toBe('active');
     expect(journeyMeta(journeyLastTouchedAt('engaged', daysAgoIso(now, 2)), now).state).toBe('active');
   });
 
-  test('incoming leads never stall — first_touch stays blue however long it sits', () => {
+  test('incoming leads never stall â€” first_touch stays blue however long it sits', () => {
     const now = new Date('2026-07-02T12:00:00Z');
     expect(journeyMeta(journeyLastTouchedAt('first_touch', daysAgoIso(now, 30)), now).state).toBe('active');
   });
@@ -277,7 +277,7 @@ describe('decayFactor', () => {
     expect(decayFactor(500, 'engaged')).toBe(1);
   });
 
-  test('converted journeys never decay — the win stays green', () => {
+  test('converted journeys never decay â€” the win stays green', () => {
     expect(decayFactor(500, 'converted')).toBe(0);
   });
 });
@@ -373,7 +373,7 @@ describe('funnelSpaceModel', () => {
     expect(node.linkedin).toBe('https://linkedin.com/in/riley-monroe-example');
   });
 
-  test('node radius grows with likelihood-to-buy inside compact 2.5–5.5px bounds', () => {
+  test('node radius grows with likelihood-to-buy inside compact 2.5â€“5.5px bounds', () => {
     const lo = mkJourney('lo', 'engaged', [mkTouch('lo', 1, 'first_touch', 1)], { likelihood: 0 });
     const hi = mkJourney('hi', 'engaged', [mkTouch('hi', 1, 'first_touch', 1)], { id: 'hi', likelihood: 100 });
     const [nLo, nHi] = funnelSpaceModel([lo, hi], NOW);
@@ -396,7 +396,7 @@ describe('funnelSpaceModel', () => {
   });
 });
 
-describe('attentionQueue — what to act on today (AC55)', () => {
+describe('attentionQueue â€” what to act on today (AC55)', () => {
   const NOW = new Date('2026-07-11T12:00:00Z');
   const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString().slice(0, 10);
   const lead = (
@@ -497,7 +497,7 @@ describe('attentionQueue — what to act on today (AC55)', () => {
   });
 });
 
-describe('orbitSpread — crowded hubs breathe wider', () => {
+describe('orbitSpread â€” crowded hubs breathe wider', () => {
   test('a dozen leads keep the tight constellation, a live pipeline spreads', () => {
     expect(orbitSpread(1)).toBe(1);
     expect(orbitSpread(12)).toBe(1);
@@ -512,8 +512,8 @@ describe('orbitSpread — crowded hubs breathe wider', () => {
 
 /**
  * Mock 3c polish (the operator, 2026-09-07): the view controls are the same chip
- * vocabulary as the venture tabs — a Flow/Radial toggle plus an Archive (n)
- * chip — instead of bare text links, and every visible string drops the em
+ * vocabulary as the venture tabs â€” a Flow/Radial toggle plus an Archive (n)
+ * chip â€” instead of bare text links, and every visible string drops the em
  * dash for the middot.
  */
 describe('/funnel mock-3c polish', () => {
@@ -528,10 +528,11 @@ describe('/funnel mock-3c polish', () => {
   });
 
   test('visible copy carries no em dashes', () => {
-    expect(page).toContain('hot + moving · close them');
-    expect(page).toContain('fading toward the archive · highest likelihood first');
-    expect(page).not.toMatch(/decayed — no lead/);
-    expect(page).not.toMatch(/fading — every lead/);
-    expect(page).not.toMatch(/unavailable — last messages/);
+    expect(page).toContain('hot + moving Â· close them');
+    expect(page).toContain('fading toward the archive Â· highest likelihood first');
+    expect(page).not.toMatch(/decayed â€” no lead/);
+    expect(page).not.toMatch(/fading â€” every lead/);
+    expect(page).not.toMatch(/unavailable â€” last messages/);
   });
 });
+

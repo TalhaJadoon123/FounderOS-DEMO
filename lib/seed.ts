@@ -1,4 +1,4 @@
-import type { FounderDb } from '@/lib/db';
+﻿import type { FounderDb } from '@/lib/db';
 import type {
   Agent,
   AgentCron,
@@ -7,27 +7,27 @@ import type {
 } from '@/lib/schemas';
 
 /**
- * Minimal runtime seed — only the structural data the OS needs to function.
+ * Minimal runtime seed â€” only the structural data the OS needs to function.
  * NO demo content, NO fake metrics, NO seeded social/email/funnel/trading data.
  *
  * All other tables start EMPTY. Pages show honest "not configured" or empty states
  * until real data arrives via connectors, webhooks, or operator input.
  */
 
-// The six operating pillars — static, never demo data.
+// The six operating pillars â€” static, never demo data.
 const departments: Department[] = [
   { id: 'dept-sales', name: 'Sales', slug: 'sales', tagline: 'Pipeline and deals.', color: '#fafafa', order: 1 },
   { id: 'dept-marketing-growth', name: 'Marketing/Growth', slug: 'marketing-growth', tagline: 'Publishing, content, attention.', color: '#d4d4d4', order: 2 },
-  { id: 'dept-tech', name: 'TECH', slug: 'tech', tagline: 'AI & automations · G-Brain.', color: '#a3a3a3', order: 3 },
+  { id: 'dept-tech', name: 'TECH', slug: 'tech', tagline: 'AI & automations Â· G-Brain.', color: '#a3a3a3', order: 3 },
   { id: 'dept-finance', name: 'Finances', slug: 'finances', tagline: 'Every processor, one view.', color: '#737373', order: 4 },
-  { id: 'dept-comms', name: 'Communications', slug: 'communications', tagline: 'Gmail, WhatsApp, Slack → one feed.', color: '#525252', order: 5 },
+  { id: 'dept-comms', name: 'Communications', slug: 'communications', tagline: 'Gmail, WhatsApp, Slack â†’ one feed.', color: '#525252', order: 5 },
   { id: 'dept-clients', name: 'Clients', slug: 'clients', tagline: 'Every client, onboarded and served.', color: '#d4d4d4', order: 6 },
 ];
 
-// The agent roster IS the runtime — 1:1 mapping to RuntimeAgent in lib/agents/real.ts
+// The agent roster IS the runtime â€” 1:1 mapping to RuntimeAgent in lib/agents/real.ts
 // No demo agents. Each row here becomes a live instance slot.
 const agents: Agent[] = [
-  // ── TECH: AI head ─────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  // â”€â”€ TECH: AI head â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'conductor',
     departmentId: 'dept-tech',
@@ -41,12 +41,12 @@ const agents: Agent[] = [
     parentId: null,
     instance: 'builtin',
   },
-  // ── Communications: one instance, three channel workers feeding /comms ────────
+  // â”€â”€ Communications: one instance, three channel workers feeding /comms â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'comms-digest',
     departmentId: 'dept-comms',
     name: 'Comms Digest',
-    role: 'Morning Report · 09:00 daily',
+    role: 'Morning Report Â· 09:00 daily',
     status: 'active',
     tier: 'lead',
     description: 'Scrapes the last 24h across all four inboxes, WhatsApp and Slack and ranks who needs a reply: calls first, then clients, community members, brand deals, group chats, companies last. Also lists what to unsubscribe from.',
@@ -107,12 +107,12 @@ const agents: Agent[] = [
     parentId: 'comms-agent',
     instance: 'builtin',
   },
-  // ── Sales: funnel agents ─────────────────────────────────────────────────────
+  // â”€â”€ Sales: funnel agents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'client-onboarding',
     departmentId: 'dept-sales',
     name: 'Client Onboarding',
-    role: 'SOP Runner · Triggered by funnel',
+    role: 'SOP Runner Â· Triggered by funnel',
     status: 'active',
     tier: 'lead',
     description: 'When a deal closes, provisions the Ledger trigger, Slack workspace, and onboarding checklist.',
@@ -125,7 +125,7 @@ const agents: Agent[] = [
     id: 'crm-pulse',
     departmentId: 'dept-sales',
     name: 'CRM Pulse',
-    role: 'Pipeline Sync · Weekdays 09:00',
+    role: 'Pipeline Sync Â· Weekdays 09:00',
     status: 'active',
     tier: 'lead',
     description: 'Pulls pipeline from Attio/GHL, computes stage ages, and flags stalled deals. Requires GHL_API_KEY or Attio key.',
@@ -141,18 +141,18 @@ const agents: Agent[] = [
     role: 'Sponsorship Pipeline',
     status: 'active',
     tier: 'lead',
-    description: 'Tracks inbound sponsorship requests, scores ICPs, and manages the deal board. Real data only — no seed.',
+    description: 'Tracks inbound sponsorship requests, scores ICPs, and manages the deal board. Real data only â€” no seed.',
     model: 'rules + connectors',
     tools: ['brand-deals', 'ledger', 'attio'],
     parentId: null,
     instance: 'builtin',
   },
-  // ── Marketing/Growth: content & social ───────────────────────────────────────
+  // â”€â”€ Marketing/Growth: content & social â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'social-agent',
     departmentId: 'dept-marketing-growth',
     name: 'Social Agent',
-    role: 'Postly + Adsmith · 18:00 daily',
+    role: 'Postly + Adsmith Â· 18:00 daily',
     status: 'active',
     tier: 'lead',
     description: 'Generates posts from approved topics, creates ad variants, and schedules via Postly. Requires Postly/API keys.',
@@ -174,7 +174,7 @@ const agents: Agent[] = [
     parentId: null,
     instance: 'builtin',
   },
-  // ── Finance: revenue & trading ───────────────────────────────────────────────
+  // â”€â”€ Finance: revenue & trading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'finance-agent',
     departmentId: 'dept-finance',
@@ -188,7 +188,7 @@ const agents: Agent[] = [
     parentId: null,
     instance: 'builtin',
   },
-  // ── Clients: ops agents ──────────────────────────────────────────────────────
+  // â”€â”€ Clients: ops agents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   {
     id: 'ops-agent',
     departmentId: 'dept-clients',
@@ -204,7 +204,7 @@ const agents: Agent[] = [
   },
 ];
 
-// Scheduled jobs that ship with the OS — each maps to an agent that genuinely does the work.
+// Scheduled jobs that ship with the OS â€” each maps to an agent that genuinely does the work.
 export const seededCrons: AgentCron[] = [
   {
     id: 'cron-comms-digest-0900',
@@ -266,19 +266,23 @@ export function seedDatabase(db: FounderDb): void {
   db.agents.deleteWhereIdNotIn(agents.map((a) => a.id));
   db.departments.deleteWhereIdNotIn(departments.map((d) => d.id));
 
-  // ALL OTHER TABLES START EMPTY — no seeded demo data.
+  // ALL OTHER TABLES START EMPTY â€” no seeded demo data.
   // Pages show honest "not configured" or empty states until real data arrives.
+
+  // Update the seed version stamp so getDb knows this DB is up to date.
+  db.meta.set('seed_version', SEED_VERSION);
 }
 
 /**
- * Empty by design — the OS ships no seeded proposals. Create them from the OS.
+ * Empty by design â€” the OS ships no seeded proposals. Create them from the OS.
  * This export exists so existing tests and syncSeededProposals continue to compile.
  */
 export const SEEDED_PROPOSALS: Proposal[] = [];
 
 export function syncSeededProposals(db: FounderDb): void {
-  // Proposals table is empty by design — create them from the OS.
+  // Proposals table is empty by design â€” create them from the OS.
   // But we still prune stale seed-origin rows so removed seeds don't linger.
   for (const p of SEEDED_PROPOSALS) db.proposals.insert(p);
   db.proposals.deleteSeededNotIn(SEEDED_PROPOSALS.map((p) => p.id));
 }
+

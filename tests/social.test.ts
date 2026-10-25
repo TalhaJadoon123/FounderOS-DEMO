@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { SocialAccountSchema, SocialSnapshotSchema, type SocialSnapshot } from '@/lib/schemas';
@@ -147,7 +147,7 @@ describe('syncSocialSnapshots', () => {
   });
 });
 
-describe('buildSocialDashboard — honest empty state (no demo data)', () => {
+describe('buildSocialDashboard â€” honest empty state (no demo data)', () => {
   test('returns empty platforms list when no accounts are seeded', () => {
     db = openDb(':memory:');
     seedDatabase(db);
@@ -193,3 +193,4 @@ describe('no seeded social data', () => {
     expect(db.social.accounts()).toHaveLength(0);
   });
 });
+

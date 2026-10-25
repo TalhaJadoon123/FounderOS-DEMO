@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+﻿import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { INTEGRATIONS } from '@/lib/integrations-catalog';
@@ -116,3 +116,4 @@ describe('the stack-monitor SOP matches the real stack check', () => {
     expect(true).toBe(true);
   });
 });
+

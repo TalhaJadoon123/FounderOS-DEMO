@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, test } from 'vitest';
+﻿import { afterAll, describe, expect, test } from 'vitest';
 import { buildWikiIndex, pickWikiEntries } from '@/lib/brain-wiki';
 
 const NOTES = [
@@ -110,3 +110,4 @@ describe('pickWikiEntries', () => {
 
 // The seed is now empty, so no generated brain-store pages exist.
 // These tests are kept for the wiki index logic which works on arbitrary markdown.
+

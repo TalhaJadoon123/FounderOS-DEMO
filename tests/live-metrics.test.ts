@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+﻿import { beforeAll, describe, expect, test } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -12,7 +12,7 @@ beforeAll(() => {
   process.env.BRAIN_PROVIDER = 'stub';
 });
 
-/** No creds of any kind — every network-backed source must decline to answer. */
+/** No creds of any kind â€” every network-backed source must decline to answer. */
 const NO_CREDS: Record<string, string | undefined> = {};
 
 const byKey = <T extends { key: string }>(metrics: T[], key: string): T => {
@@ -42,23 +42,18 @@ describe('liveMetrics', () => {
     expect(byKey(metrics, 'brain_pages').source).toMatch(/stub/);
   });
 
-  test('a genuinely measured zero stays live — it is an answer, not a gap', async () => {
+  test('a genuinely measured zero stays live â€” it is an answer, not a gap', async () => {
     const { liveMetrics } = await import('@/lib/live-metrics');
     const runs = byKey(await liveMetrics(NO_CREDS), 'agent_runs');
 
-    // The seed writes ~300 fabricated `seed-run-*` rows so /agents looks alive
-    // on a fresh clone. None of them is work this machine did, so the true
-    // count here is zero — and zero must stay live. Collapsing it into
-    // "pending" would be the same lie as the seeded zeros, pointed the other
-    // way; counting the seeded rows would be the original lie, inflated.
+    // No seeded demo runs â€” the true count is zero and it must stay live.
     expect(runs.value).toBe(0);
     expect(runs.live).toBe(true);
   });
 
-  test('seeded demo runs are never counted as work done', async () => {
+  test('no seeded demo runs â€” count is 0, countReal is 0', async () => {
     const { getDb } = await import('@/lib/data');
-    // The seed really did populate the table — this is not an empty-DB artefact.
-    expect(getDb().agentRuns.count()).toBeGreaterThan(100);
+    expect(getDb().agentRuns.count()).toBe(0);
     expect(getDb().agentRuns.countReal()).toBe(0);
   });
 
@@ -111,3 +106,4 @@ describe('GET /api/metrics', () => {
     for (const gap of body.pending) expect(gap.reason).toBeTruthy();
   });
 });
+

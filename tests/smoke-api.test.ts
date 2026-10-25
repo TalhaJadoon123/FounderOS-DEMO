@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
+﻿import { afterAll, beforeAll, describe, expect, test, vi } from 'vitest';
 import { mkdtempSync, mkdirSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -143,7 +143,7 @@ function discoverGetRoutes(dir: string, base = ''): string[] {
   return out;
 }
 
-describe('platform smoke — every GET API route answers 200 with JSON', () => {
+describe('platform smoke â€” every GET API route answers 200 with JSON', () => {
   test.each(ROUTES_200)('GET /api/$route', async ({ load, url, params, headers, parse = 'json' }) => {
     const mod = await load();
     expect(mod.GET, 'route should export GET').toBeTypeOf('function');
@@ -158,7 +158,7 @@ describe('platform smoke — every GET API route answers 200 with JSON', () => {
   }, 20_000);
 });
 
-describe('platform smoke — routes that honestly return 404 when unseeded', () => {
+describe('platform smoke â€” routes that honestly return 404 when unseeded', () => {
   test.each(HONEST_404_ROUTES)('GET /api/$route returns 404 for unseeded platform', async ({ load, url, params, headers, parse = 'text' }) => {
     const mod = await load();
     expect(mod.GET, 'route should export GET').toBeTypeOf('function');
@@ -206,3 +206,4 @@ test('the API smoke net covers every GET route under app/api (no route escapes)'
   const covered = [...ROUTES_200, ...HONEST_404_ROUTES].map((r) => r.route).sort();
   expect(covered).toEqual(discovered);
 });
+

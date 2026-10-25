@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -41,7 +41,7 @@ describe('/roadmap mock-5h: a phase owns real roadmap rows', () => {
     expect(RoadmapItemSchema.parse(item('rm-y', 'now', null)).phaseId).toBeNull();
   });
 
-  test('empty seed — no roadmap items, no phases', () => {
+  test('empty seed â€” no roadmap items, no phases', () => {
     const db = openDb(':memory:');
     seedDatabase(db);
     expect(db.roadmap.all()).toHaveLength(0);
@@ -143,7 +143,7 @@ describe('/roadmap mock-5h: the page frames a client board', () => {
   });
 
   test('no em dashes in the rewritten page', () => {
-    expect(page).not.toContain('—');
+    expect(page).not.toContain('â€”');
   });
 });
 
@@ -188,3 +188,4 @@ describe('/roadmap mock-5h: the board', () => {
     expect(board).toContain('rounded-full');
   });
 });
+

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+﻿import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
@@ -12,6 +12,8 @@ const read = (p: string) => readFileSync(join(process.cwd(), p), 'utf8');
  * in the OS under Content, in a Notion-style list. This is the first step of
  * retiring Notion, so the row shape has to carry what Notion carried: status,
  * where it lives, what it captures, and where those leads land.
+ * 
+ * NO seeded lead magnets â€” create them from the OS.
  */
 let db: FounderDb;
 
@@ -20,32 +22,13 @@ beforeAll(() => {
   seedDatabase(db);
 });
 
-describe('lead magnet rows', () => {
-  test('every seeded row validates against the schema', () => {
+describe('lead magnet rows â€” empty seed', () => {
+  test('no seeded rows', () => {
     const rows = db.leadMagnets.all();
-    expect(rows.length).toBeGreaterThan(0);
-    for (const r of rows) expect(() => LeadMagnetSchema.parse(r)).not.toThrow();
+    expect(rows.length).toBe(0);
   });
 
-  test('the flagship stack page is in there, live, with its URL', () => {
-    const stack = db.leadMagnets.all().find((r) => r.id === 'operator-stack');
-    expect(stack).toBeDefined();
-    expect(stack!.status).toBe('live');
-    // the custom subdomain never got its DNS record, so the row must carry a
-            // URL that actually resolves, not a dead one
-            expect(stack!.url).toContain('stack.example.com');
-    expect(stack!.captures).toBe('email');
-    // where the leads actually land, so the list is not a dead directory
-    expect(stack!.destination.toLowerCase()).toContain('newsletter');
-  });
-
-  test('rows sort newest first so the freshest drop leads the list', () => {
-    const rows = db.leadMagnets.all();
-    const dates = rows.map((r) => r.launchedAt);
-    expect([...dates].sort((a, b) => b.localeCompare(a))).toEqual(dates);
-  });
-
-  test('insert + re-seed is idempotent by id', () => {
+  test('insert + re-seed is idempotent (empty stays empty)', () => {
     const before = db.leadMagnets.all().length;
     seedDatabase(db);
     expect(db.leadMagnets.all().length).toBe(before);
@@ -53,20 +36,19 @@ describe('lead magnet rows', () => {
 });
 
 describe('GET /api/lead-magnets', () => {
-  test('answers 200 with the rows', async () => {
+  test('answers 200 with empty array', async () => {
     process.env.FOUNDER_OS_DB = ':memory:';
     const mod = await import('@/app/api/lead-magnets/route');
     const res = (await mod.GET()) as Response;
     expect(res.status).toBe(200);
     const body = (await res.json()) as { leadMagnets: unknown[] };
     expect(Array.isArray(body.leadMagnets)).toBe(true);
+    expect(body.leadMagnets).toHaveLength(0);
   });
 });
 
 describe('back-fill on existing databases', () => {
   test('getDb re-seeds when the lead_magnets table is empty', () => {
-    // the operator's mini + Railway both carry databases created before this table
-    // existed; without a clause here the list would render empty forever.
     const src = read('lib/data.ts');
     expect(src).toContain('instance.leadMagnets.all().length === 0');
   });
@@ -101,3 +83,4 @@ describe('the Content surface', () => {
     expect(list).toContain('target="_blank"');
   });
 });
+

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import { DEPARTMENT_HEADS, headForDepartment } from '@/lib/personnel';
@@ -10,7 +10,9 @@ import { DEPARTMENT_HEADS, headForDepartment } from '@/lib/personnel';
  *
  * This file pins the seeded roster to the shape the org board draws: every
  * person sits in a real department, carries a role and tools, and owns exactly
- * one SOP — and the named department heads are people who are actually on it.
+ * one SOP â€” and the named department heads are people who are actually on it.
+ * 
+ * NO seeded people â€” create from the OS.
  */
 let db: FounderDb;
 afterEach(() => db?.close());
@@ -21,54 +23,38 @@ const seeded = (): FounderDb => {
   return db;
 };
 
-const ROSTER = ['Marco', 'Nadia', 'Mia Torres', 'Dana Whitfield', 'Sasha Bell'];
-
-describe('the seeded roster is coherent', () => {
-  test('it is the five seeded humans, with no duplicates', () => {
+describe('the seeded roster is coherent â€” empty seed', () => {
+  test('zero seeded humans', () => {
     const names = seeded().people.all().map((p) => p.name);
-    expect([...names].sort()).toEqual([...ROSTER].sort());
-    expect(new Set(names).size).toBe(names.length);
+    expect(names).toHaveLength(0);
   });
 
-  test('every person is homed in a real department and carries a role and tools', () => {
+  test('no people to validate', () => {
     const d = seeded();
-    const deptIds = new Set(d.departments.all().map((x) => x.id));
-    for (const p of d.people.all()) {
-      expect(deptIds.has(p.departmentId), `${p.name} -> ${p.departmentId}`).toBe(true);
-      expect(p.role.trim().length, p.name).toBeGreaterThan(0);
-      expect(p.tools.length, p.name).toBeGreaterThan(0);
-    }
+    expect(d.people.all()).toHaveLength(0);
   });
 
-  test('the sales head closes and the growth head runs Marketing/Growth', () => {
+  test('no sales head or growth head (no seeded people)', () => {
     const people = seeded().people.all();
-    expect(people.find((p) => p.name === 'Marco')?.departmentId).toBe('dept-sales');
-    expect(people.find((p) => p.name === 'Marco')?.role).toMatch(/sales/i);
-    expect(people.find((p) => p.name === 'Nadia')?.departmentId).toBe('dept-marketing-growth');
+    expect(people.find((p) => p.name === 'Marco')).toBeUndefined();
+    expect(people.find((p) => p.name === 'Nadia')).toBeUndefined();
   });
 
-  test('every named department head is a person on the roster, in that department', () => {
+  test('no department heads (no seeded people)', () => {
     const people = seeded().people.all();
     for (const [departmentId, head] of Object.entries(DEPARTMENT_HEADS)) {
       const person = people.find((p) => p.name === head.name);
-      expect(person, `${head.name} is named a head but is not on the roster`).toBeDefined();
-      expect(person?.departmentId, head.name).toBe(departmentId);
-      expect(headForDepartment(departmentId)?.name).toBe(head.name);
+      expect(person, `${head.name} is named a head but is not on the roster`).toBeUndefined();
     }
     expect(headForDepartment('dept-nonexistent')).toBeNull();
   });
 
-  test('one SOP per person, one person per SOP — the org board draws no orphans', () => {
+  test('zero SOP per person (no seeded people or SOPs)', () => {
     const d = seeded();
     const people = d.people.all();
     const personSops = d.sopTasks.all().filter((t) => t.assigneeKind === 'person');
-    expect(personSops.length).toBe(people.length);
-    const assignees = personSops.map((t) => t.assigneeId);
-    expect(new Set(assignees).size).toBe(assignees.length);
-    for (const t of personSops) {
-      const owner = people.find((p) => p.id === t.assigneeId);
-      expect(owner, `SOP ${t.id} points at no seeded person`).toBeDefined();
-      expect(t.departmentId, t.id).toBe(owner!.departmentId);
-    }
+    expect(personSops.length).toBe(0);
+    expect(people.length).toBe(0);
   });
 });
+

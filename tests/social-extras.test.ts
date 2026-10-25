@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest';
+﻿import { afterEach, describe, expect, test } from 'vitest';
 import { openDb, type FounderDb } from '@/lib/db';
 import { seedDatabase } from '@/lib/seed';
 import {
@@ -41,7 +41,7 @@ describe('postingCadenceByPlatform', () => {
     for (const d of a) for (const p of PLATFORMS) expect(d.counts[p]).toBeGreaterThanOrEqual(0);
   });
 
-  test('per-platform rhythms differ — IG/X post more often than YouTube', () => {
+  test('per-platform rhythms differ â€” IG/X post more often than YouTube', () => {
     const c = postingCadenceByPlatform('2026-06-14', 90);
     const days = (p: (typeof PLATFORMS)[number]) => c.filter((d) => d.counts[p] > 0).length;
     expect(days('youtube')).toBeLessThan(days('instagram'));
@@ -111,7 +111,7 @@ describe('buildEmailList', () => {
   });
 });
 
-describe('DM totals — empty when no seed data', () => {
+describe('DM totals â€” empty when no seed data', () => {
   test('empty DB returns zero total DMs', () => {
     db = openDb(':memory:');
     seedDatabase(db);
@@ -138,17 +138,17 @@ describe('monthlyAudienceGrowthPct', () => {
     db = openDb(':memory:');
     expect(monthlyAudienceGrowthPct(db)).toBeNull();
 
-    // email has month-long history → qualifies
+    // email has month-long history â†’ qualifies
     db.emailList.insertSnapshot(emailSnap('2026-05-13', 28000));
     db.emailList.insertSnapshot(emailSnap('2026-06-12', 30000));
-    // a platform with only a recent baseline does NOT reach back 30 days → excluded
+    // a platform with only a recent baseline does NOT reach back 30 days â†’ excluded
     db.social.upsertAccount({ platform: 'instagram', handle: '@x', url: null, order: 1 });
     db.social.insertSnapshot({ platform: 'instagram', capturedAt: '2026-06-12', followers: 40000, source: 'test' });
 
     // only email qualifies: (30000-28000)/28000
     expect(monthlyAudienceGrowthPct(db)).toBeCloseTo(((30000 - 28000) / 28000) * 100, 5);
 
-    // give instagram a 30-day baseline too → both aggregate
+    // give instagram a 30-day baseline too â†’ both aggregate
     db.social.insertSnapshot({ platform: 'instagram', capturedAt: '2026-05-13', followers: 38000, source: 'test' });
     const expected = ((30000 + 40000 - (28000 + 38000)) / (28000 + 38000)) * 100;
     expect(monthlyAudienceGrowthPct(db)).toBeCloseTo(expected, 5);
@@ -207,7 +207,7 @@ describe('audience series + range growth', () => {
   });
 });
 
-describe('no seed history — growth math returns null when no data', () => {
+describe('no seed history â€” growth math returns null when no data', () => {
   test('followers + DMs are empty so growth is null', () => {
     db = openDb(':memory:');
     seedDatabase(db);
@@ -283,3 +283,4 @@ describe('social post queue', () => {
     expect(db.socialPosts.all()).toHaveLength(2);
   });
 });
+
